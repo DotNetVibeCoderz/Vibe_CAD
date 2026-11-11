@@ -92,14 +92,16 @@ dotnet new cad-console -n MyPart      # also: cad-webapi cad-blazor cad-wpf cad-
 ## Gravicode CAD Studio
 
 A full CAD designer built on the library — AutoCAD-style command line, ribbon, layers, snaps and grips, 2D drafting
-with TRIM/EXTEND/FILLET/CHAMFER, hatches, blocks, PLOT to scaled PDF/SVG sheets, 3D solids with booleans, 8 templates
-and 18 samples from 17 industries. Two editions, one engine:
+with TRIM/EXTEND/FILLET/CHAMFER and true arc polylines, hatches, blocks, paper-space layouts with viewports and PLOT to
+scaled PDF/SVG sheets, 3D solids with booleans, picking and move/rotate/scale gizmos, sketch-on-face (extrude adds or
+cuts) and editable parametric history, 8 templates and 18 samples from 17 industries. Two editions, one engine:
 
 | Web (Blazor) | Desktop (Avalonia + ThreeNet) |
 |---|---|
 | ![Studio web](docs/images/studio-web-editor.png) | ![Studio desktop](docs/images/studio-desktop-editor.png) |
 | ![Studio web start](docs/images/studio-web-start.png) | ![Studio desktop samples](docs/images/studio-desktop-samples.png) |
 | ![Studio drafting](docs/images/studio-web-drafting.png) | ![Studio grips](docs/images/studio-desktop-drafting.png) |
+| ![Studio history](docs/images/studio-web-history.png) | ![Studio layout](docs/images/studio-web-layout.png) |
 
 ```bash
 dotnet run --project studio/Gravicode.CAD.Studio.Web        # http://localhost:5190

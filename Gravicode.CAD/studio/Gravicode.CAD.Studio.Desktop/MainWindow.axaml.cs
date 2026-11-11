@@ -142,6 +142,8 @@ public partial class MainWindow : Window
 
         Opened += async (_, _) =>
         {
+            if (!UpdateCheck.Disabled && Environment.GetEnvironmentVariable("GCAD_STUDIO_DEMO") is null)
+                _ = Task.Delay(4000).ContinueWith(_ => Dispatcher.UIThread.Post(async () => await CheckForUpdateAsync(manual: false)));
             if (Program.StartupFile is { } f) await OpenPathAsync(f);
             if (Environment.GetEnvironmentVariable("GCAD_STUDIO_DEMO") is { Length: > 0 } demo)
                 try { await RunDemoAsync(demo); } catch (Exception ex) { ShowToast("demo: " + ex.Message); }
@@ -439,6 +441,7 @@ public partial class MainWindow : Window
             case "new": ShowStart(); break;
             case "open": await OpenDialogAsync(); break;
             case "save": await SaveAsync(); break;
+            case "update": await CheckForUpdateAsync(manual: true); break;
             default:
                 if (action.StartsWith("export:")) await ExportAsync(action[7..]);
                 break;
@@ -1091,6 +1094,36 @@ public partial class MainWindow : Window
         if (path is null) return;
         await File.WriteAllBytesAsync(path, data);
         ShowToast($"{T("Saved", "Disimpan")} {System.IO.Path.GetFileName(path)}");
+    }
+
+    private StudioUpdate? _update;
+
+    /// <summary>Looks for a newer release on GitHub; quiet on start-up, chatty when asked from the ribbon.</summary>
+    private async Task CheckForUpdateAsync(bool manual)
+    {
+        try
+        {
+            _update = await UpdateCheck.FindNewerAsync(UpdateCheck.Current);
+            if (_update is { } u)
+            {
+                UpdateButton.Content = T($"UPDATE {u.Version.ToString(3)}", $"PERBARUI {u.Version.ToString(3)}");
+                ToolTip.SetTip(UpdateButton, T("A newer Gravicode CAD Studio is available — open the download page", "Gravicode CAD Studio versi baru tersedia — buka halaman unduhan"));
+                UpdateButton.IsVisible = true;
+                ShowToast(T($"Gravicode CAD Studio {u.Version.ToString(3)} is available.", $"Gravicode CAD Studio {u.Version.ToString(3)} tersedia."));
+            }
+            else if (manual) ShowToast(T($"You have the latest version ({UpdateCheck.Current.ToString(3)}).", $"Anda memakai versi terbaru ({UpdateCheck.Current.ToString(3)})."));
+        }
+        catch (Exception ex)
+        {
+            if (manual) ShowToast(T($"Could not check for updates: {ex.Message}", $"Tidak dapat memeriksa pembaruan: {ex.Message}"));
+        }
+    }
+
+    private void OnUpdateClick(object? sender, RoutedEventArgs e)
+    {
+        var url = _update?.PageUrl ?? "https://github.com/DotNetVibeCoderz/Vibe_CAD/releases";
+        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }); }
+        catch (Exception ex) { ShowToast(ex.Message); }
     }
 
     private bool _closeConfirmed;

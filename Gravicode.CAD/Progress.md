@@ -26,7 +26,7 @@ Legend: ✅ done · 🚧 in progress · ⏳ planned (see [PLAN.md](PLAN.md))
 ## Apps, packaging, docs
 | Item | Status |
 |---|---|
-| Tests | ✅ 103 passing (75 library + 28 studio) + 1 opt-in live LLM test |
+| Tests | ✅ 115 passing (75 library + 40 studio) + 1 opt-in live LLM test |
 | Console sample, DocGen tool | ✅ |
 | Templates (console, webapi, blazor, wpf, winforms, avalonia, maui) | ✅ |
 | Gallery — Blazor (18 samples, three.js) | ✅ |
@@ -42,9 +42,12 @@ Legend: ✅ done · 🚧 in progress · ⏳ planned (see [PLAN.md](PLAN.md))
 | Studio HATCH (pick point with islands, ANSI31 / ANSI37 / SOLID, auto scale), BLOCK / INSERT / EXPLODE | ✅ |
 | Studio PLOT: A4–A0, Fit or 1:N, window, title block, PDF / SVG; exports explode dims/hatches/blocks (DXF keeps them) | ✅ |
 | Studio 3D picking (click / Shift), selection highlight, move & rotate gizmos (web: three.js in `<CadViewer>`; desktop: overlay on ThreeNet), 3DMOVE / 3DROTATE | ✅ |
-| Studio sketch-on-face, parametric history, paper-space layouts | ⏳ |
+| Studio sketch-on-face (UCS Face; extrude adds / cuts), paper-space layouts (LAYOUT, MVIEW, PLOT layout) | ✅ |
+| Studio parametric history (feature trees, PARAM, editable in the properties panel) | ✅ |
+| Studio scale gizmo, arc-segment polylines (bulges; DXF keeps arcs), desktop update check, optional installer signing | ✅ |
 
 ## Log
+- 2026-11-12 — **1.1.0**: polyline arc segments in the library (`PolylineEntity.Bulges`; DXF read/write keeps arcs — `Points` no longer contains tessellated arc points), `<CadViewer>` picking/gizmos (move, rotate, scale), `CadScene.SetHighlight`. Studio: sketch on faces, paper-space layouts, parametric history, scale gizmo, update check, signing-ready release workflow.
 - 2026-11-12 — Studio 3D: ray picking, selection highlight, move/rotate gizmos with grid / 15° snapping in both editions, 3DMOVE/3DROTATE. Library: `<CadViewer>` gains `Selectable`, `Highlighted`, `GizmoMode`, `OnPick`, `OnGizmo`, `KeepViewOnUpdate`; `CadScene.SetHighlight` / `ToCad`. 3D views rebuild only when solids change.
 - 2026-11-12 — Studio drafting stage: TRIM/EXTEND/FILLET/CHAMFER, grips (corner-only on tessellated polylines), HATCH with islands and auto scale, blocks, PLOT to scaled PDF/SVG with title block. Fixed: `;` as Enter in the interactive command line, DXF export dropped dimensions, exact keyword matches now beat prefixes.
 - 2026-11-11 — **1.0.1**: NuGet packages and `dotnet new` templates move to ThreeNet 0.12.1 and ship the `CadScene` clip-plane/background fixes and the software renderer's edge depth-bias fix. Studio 1.0.0 released with installers for Windows, Linux and macOS.

@@ -29,11 +29,11 @@ Interactive render mode is required (Server, WebAssembly or Auto). The component
 | `ShowEdges`, `ShowGrid`, `ShowToolbar`, `AutoRotate` | `true, true, true, false` | |
 | `OnLoaded` | — | callback with the loaded model |
 | `KeepViewOnUpdate` | `false` | keep the camera when `Model` changes (editors) instead of framing every new model |
-| `Selectable` | `false` | a click (no drag) raises `OnPick` with the body index (-1 = empty space), hit point and Shift/Ctrl |
+| `Selectable` | `false` | a click (no drag) raises `OnPick` with the body index (-1 = empty space), hit point, face normal and Shift/Ctrl |
 | `Highlighted` | — | body indices drawn as selected (orange glow and edges) |
-| `GizmoMode` | `null` | `"move"` (axis arrows) or `"rotate"` (axis rings) on the highlighted bodies |
+| `GizmoMode` | `null` | `"move"` (axis arrows), `"rotate"` (axis rings) or `"scale"` (uniform, square handles) on the highlighted bodies |
 | `GizmoSnap` | `0` | move step in model units; rotations snap to 15°; Alt drags freely |
-| `OnGizmo` | — | finished drag: `Mode`, `Delta` (move) or `Axis` + `Angle` + `Pivot` (rotate), CAD space |
+| `OnGizmo` | — | finished drag: `Mode`, `Delta` (move), `Axis` + `Angle` (rotate) or `Factor` (scale), about `Pivot`, CAD space |
 
 Body indices count the model's visible, non-empty bodies in order. While a gizmo is dragged the selected bodies
 move live in the browser; apply the edit in `OnGizmo` and pass the new model — it replaces the preview.

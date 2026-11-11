@@ -65,6 +65,19 @@ jobs:
       run:
         working-directory: Gravicode.CAD
         shell: bash
+    # Code signing is optional: each step below runs only when its secrets exist.
+    #   Windows: WINDOWS_CERT_PFX (base64 .pfx), WINDOWS_CERT_PASSWORD
+    #   macOS:   MACOS_CERT_P12 (base64 Developer ID Application .p12), MACOS_CERT_PASSWORD, MACOS_SIGN_IDENTITY,
+    #            and for notarisation APPLE_ID, APPLE_TEAM_ID, APPLE_APP_PASSWORD (app-specific password)
+    env:
+      WINDOWS_CERT_PFX: ${{ secrets.WINDOWS_CERT_PFX }}
+      WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+      MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+      MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+      MACOS_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
 
@@ -107,6 +120,18 @@ jobs:
           cp ../LICENSE out/web/ 2>/dev/null || true
           cp ../LICENSE out/desktop/ 2>/dev/null || true
 
+      - name: Sign Windows executables
+        if: runner.os == 'Windows' && env.WINDOWS_CERT_PFX != ''
+        shell: pwsh
+        run: |
+          [IO.File]::WriteAllBytes("$env:RUNNER_TEMP\cert.pfx", [Convert]::FromBase64String($env:WINDOWS_CERT_PFX))
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Recurse -Filter signtool.exe | Where-Object FullName -like "*x64*" | Select-Object -Last 1
+          "SIGNTOOL=$($signtool.FullName)" >> $env:GITHUB_ENV
+          foreach ($f in @("out/desktop/GravicodeCadStudio.exe", "out/web/GravicodeCadStudioWeb.exe")) {
+            & $signtool.FullName sign /f "$env:RUNNER_TEMP\cert.pfx" /p $env:WINDOWS_CERT_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $f
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+          }
+
       - name: Package (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -119,6 +144,10 @@ jobs:
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           & $iscc "/DAppVersion=$v" "/DSourceDir=$PWD\out\desktop" "/DOutputDir=$PWD\out\release" studio/installer/GravicodeCadStudio.iss
           if ($LASTEXITCODE -ne 0) { exit 1 }
+          if ($env:WINDOWS_CERT_PFX) {
+            & $env:SIGNTOOL sign /f "$env:RUNNER_TEMP\cert.pfx" /p $env:WINDOWS_CERT_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "out/release/GravicodeCadStudio-$v-win-x64-setup.exe"
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+          }
           Get-ChildItem out/release | Format-Table Name, Length
 
       - name: Package (Linux)
@@ -128,11 +157,29 @@ jobs:
           bash studio/installer/package-linux.sh out/desktop "$v" out/release
           (cd out && mv web "gravicode-cad-studio-web-$v" && tar -czf "release/GravicodeCadStudioWeb-$v-linux-x64.tar.gz" "gravicode-cad-studio-web-$v")
 
+      - name: Import macOS signing certificate
+        if: runner.os == 'macOS' && env.MACOS_CERT_P12 != ''
+        run: |
+          KC="$RUNNER_TEMP/signing.keychain-db"; PW=$(uuidgen)
+          echo "$MACOS_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$PW" "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p "$PW" "$KC"
+          security import "$RUNNER_TEMP/cert.p12" -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KC"
+          security set-key-partition-list -S apple-tool:,apple: -k "$PW" "$KC"
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+          echo "MACOS_SIGN_IDENTITY=$MACOS_IDENTITY" >> "$GITHUB_ENV"
+
       - name: Package (macOS)
         if: runner.os == 'macOS'
         run: |
           v="${{ steps.version.outputs.version }}"
           bash studio/installer/package-macos.sh out/desktop "$v" out/release
+          if [ -n "${MACOS_SIGN_IDENTITY:-}" ]; then codesign --force --timestamp --sign "$MACOS_SIGN_IDENTITY" "out/release/GravicodeCadStudio-$v-osx-arm64.dmg"; fi
+          if [ -n "${MACOS_SIGN_IDENTITY:-}" ] && [ -n "$APPLE_ID" ]; then
+            xcrun notarytool submit "out/release/GravicodeCadStudio-$v-osx-arm64.dmg" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --wait
+            xcrun stapler staple "out/release/GravicodeCadStudio-$v-osx-arm64.dmg"
+          fi
           (cd out && mv web "gravicode-cad-studio-web-$v" && zip -qry "release/GravicodeCadStudioWeb-$v-osx-arm64.zip" "gravicode-cad-studio-web-$v")
 
       - uses: actions/upload-artifact@v4
@@ -169,7 +216,8 @@ jobs:
             | Linux x64 | `gravicode-cad-studio_*_amd64.deb` or `*-linux-x64.tar.gz` | `GravicodeCadStudioWeb-*-linux-x64.tar.gz` → `start-studio.sh` |
             | macOS (Apple silicon) | `*-osx-arm64.dmg` or `*.app.zip` | `GravicodeCadStudioWeb-*-osx-arm64.zip` → `start-studio.sh` |
 
-            macOS builds are ad-hoc signed, not notarised: right-click the app → **Open** the first time.
-            Windows SmartScreen may warn because the installer is unsigned: **More info → Run anyway**.
+            Builds are code-signed when the repository has signing certificates configured. Unsigned builds still run:
+            on macOS right-click the app → **Open** the first time; on Windows choose **More info → Run anyway**.
+            The desktop app checks this page for newer versions (set `GCAD_NO_UPDATE_CHECK=1` to turn that off).
 
             Dibuat oleh Gravicode Studios dipimpin oleh Kang Fadhil.

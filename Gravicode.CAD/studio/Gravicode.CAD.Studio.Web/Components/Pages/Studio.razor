@@ -156,6 +156,10 @@
                 Nav.NavigateTo(""); break;
             case "open":
                 await JS.InvokeVoidAsync("eval", "document.getElementById('open-file').click()"); break;
+            case "update":
+                // the web edition is updated by whoever hosts it; point to the releases page
+                await JS.InvokeVoidAsync("open", "https://github.com/DotNetVibeCoderz/Vibe_CAD/releases", "_blank");
+                break;
             case "save":
                 await DownloadAsync(FileBase() + ".gcproj", ProjectFile.Save(S.Document), "application/octet-stream");
                 S.Document.IsDirty = false; S.Notify();

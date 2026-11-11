@@ -47,6 +47,7 @@ public static class StudioRibbon
         [
             new("File", [B("New", "app:new", "new", "Start screen", true), B("Open", "app:open", "open", "Open .gcproj or any CAD file", true), B("Save", "app:save", "save", "Save project (.gcproj)", true)]),
             new("Plot", [B("Plot", "PLOT", "plot", "Plot to a PDF/SVG sheet with scale and title block (PLOT)", true)]),
+            new("Studio", [B("Updates", "app:update", "update", "Check GitHub for a newer Gravicode CAD Studio")]),
             new("Paper space", [B("Layout", "LAYOUT New", "layout", "New paper-space layout (LAYOUT)", true), B("Viewport", "MVIEW", "mview", "Add a viewport to the layout (MVIEW)")]),
             new("Export", [B("STEP", "app:export:step", "export", "STEP AP214"), B("STL", "app:export:stl", "export", "Binary STL"), B("glTF", "app:export:glb", "export", "glTF binary"), B("3MF", "app:export:3mf", "export", "3MF"),
                            B("DXF", "app:export:dxf", "export", "AutoCAD DXF"), B("PDF", "app:export:pdf", "export", "PDF drawing"), B("SVG", "app:export:svg", "export", "SVG"), B("PNG", "app:export:png", "export", "Rendered image")]),
@@ -117,6 +118,7 @@ public static class StudioRibbon
         ["hatch"] = "M4 4 H20 V20 H4 Z M4 10 L10 4 M4 16 L16 4 M8 20 L20 8 M14 20 L20 14",
         ["block"] = "M4 4 H11 V11 H4 Z M13 4 H20 V11 H13 Z M4 13 H11 V20 H4 Z M13 13 H20 V20 H13 Z",
         ["insert"] = "M12 3 V14 M8 10 L12 14 L16 10 M5 15 H19 V21 H5 Z",
+        ["update"] = "M12 3 V15 M7 10 L12 15 L17 10 M5 19 H19",
         ["ucs"] = "M4 18 L12 14 L20 18 L12 22 Z M12 14 V4 M9 7 L12 4 L15 7 M4 18 V12 M20 18 V12",
         ["layout"] = "M3 4 H21 V20 H3 Z M6 7 H14 V14 H6 Z M16 16 H19 V18 H16 Z",
         ["mview"] = "M3 4 H21 V20 H3 Z M7 8 H17 V16 H7 Z M7 8 L17 16",

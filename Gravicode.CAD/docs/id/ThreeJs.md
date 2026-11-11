@@ -29,11 +29,11 @@ Membutuhkan render mode interaktif (Server, WebAssembly atau Auto). Komponen men
 | `ShowEdges`, `ShowGrid`, `ShowToolbar`, `AutoRotate` | `true, true, true, false` | |
 | `OnLoaded` | — | callback berisi model yang dimuat |
 | `KeepViewOnUpdate` | `false` | pertahankan kamera saat `Model` berubah (editor), bukan mem-fit setiap model baru |
-| `Selectable` | `false` | klik (tanpa seret) memicu `OnPick` berisi indeks body (-1 = ruang kosong), titik kena dan Shift/Ctrl |
+| `Selectable` | `false` | klik (tanpa seret) memicu `OnPick` berisi indeks body (-1 = ruang kosong), titik kena, normal permukaan dan Shift/Ctrl |
 | `Highlighted` | — | indeks body yang digambar terpilih (pendar dan tepi oranye) |
-| `GizmoMode` | `null` | `"move"` (panah sumbu) atau `"rotate"` (cincin sumbu) pada body yang di-highlight |
+| `GizmoMode` | `null` | `"move"` (panah sumbu), `"rotate"` (cincin sumbu) atau `"scale"` (seragam, pegangan kotak) pada body yang di-highlight |
 | `GizmoSnap` | `0` | langkah geser dalam satuan model; rotasi snap per 15°; Alt untuk seret bebas |
-| `OnGizmo` | — | seret selesai: `Mode`, `Delta` (geser) atau `Axis` + `Angle` + `Pivot` (putar), ruang CAD |
+| `OnGizmo` | — | seret selesai: `Mode`, `Delta` (geser), `Axis` + `Angle` (putar) atau `Factor` (skala), terhadap `Pivot`, ruang CAD |
 
 Indeks body menghitung body model yang terlihat dan tidak kosong, berurutan. Selama gizmo diseret, body terpilih
 bergerak langsung di browser; terapkan perubahannya di `OnGizmo` lalu kirim model baru — model itu menggantikan pratinjau.

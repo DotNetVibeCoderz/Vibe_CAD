@@ -60,7 +60,8 @@ wheel zoom, middle-drag or Space+drag pan, double-middle-click zoom extents.
 | Annotate | DIMLINEAR (DLI) |
 | Blocks | BLOCK (B), INSERT (I) |
 | Output | PLOT (PRINT) |
-| Solids | BOX, CYLINDER (CYL), CONE, SPHERE, TORUS (TOR), GEAR, EXTRUDE (EXT, nested shapes become holes), REVOLVE (REV), UNION (UNI), SUBTRACT (SU), INTERSECT (IN), ELEVATE (EL), 3DMOVE (3M), 3DROTATE (3R) |
+| Solids | BOX, CYLINDER (CYL), CONE, SPHERE, TORUS (TOR), GEAR, EXTRUDE (EXT, nested shapes become holes), REVOLVE (REV), UNION (UNI), SUBTRACT (SU), INTERSECT (IN), ELEVATE (EL), 3DMOVE (3M), 3DROTATE (3R), 3DSCALE (3S), PARAM (history) |
+| Spaces | UCS (Face / World / List), MODEL (MS), LAYOUT (LO: New / Set / List / Delete), MVIEW (MV) |
 | Inspect | DIST (DI), AREA (AA), MASSPROP (MP), LIST (LI) |
 | Layers | LAYER (LA: New/Set/On/Off/Lock/Unlock/List), COLOR (COL) |
 | View | ZOOM (Z), VIEW3D, PLAN, GRID, ORTHO, OSNAP, SELECTALL |
@@ -78,6 +79,8 @@ Booleans run on the Rust kernel when it is present (status bar shows the kernel)
   object that nothing crosses erases it. Lines, arcs, circles and polylines (open or closed) are supported.
 - **FILLET / CHAMFER** join two lines: `R` / `D` set the radius or the two distances (remembered between runs),
   radius 0 makes a sharp corner, and `P` (Polyline) rounds or bevels every corner of a polyline at once.
+  Polyline fillets are **true arc segments** (bulges, as in DXF LWPOLYLINE): they snap to their middle and centre,
+  stay arcs in DXF, and EXPLODE turns them into lines and arcs.
 - **Grips**: select objects while no command runs and blue grips appear (up to 100 objects). Click a grip, move,
   click again to place it — line ends and midpoints, circle centres and quadrants, arc ends/middle/centre,
   polyline corners, dimension ends and dimension-line position. Esc cancels.
@@ -104,12 +107,41 @@ The bar at the top left of the 3D pane switches the gizmo:
 - **MOVE**: drag the red/green/blue arrow to move the selection along X, Y or Z. Steps follow the grid size
   (status bar `GRID`); hold **Alt** for free movement.
 - **ROTATE**: drag a ring to turn the selection about that axis through its centre, in 15° steps (Alt = free).
+- **SCALE**: drag any square handle outwards to scale uniformly about the centre, in 0.1 steps (Alt = free).
 - **SELECT**: no gizmo, just picking.
 
-Each drag is one undo step. From the keyboard: `3DMOVE` (displacement `dx,dy,dz`) and `3DROTATE` (axis X/Y/Z,
-angle). The desktop edition draws the same gizmo over the GPU view:
+Each drag is one undo step. From the keyboard: `3DMOVE` (displacement `dx,dy,dz`), `3DROTATE` (axis X/Y/Z,
+angle) and `3DSCALE` (factor). The desktop edition draws the same gizmo over the GPU view:
 
 ![Desktop gizmo](../images/studio-desktop-gizmo.png)
+
+## Sketch on a face
+
+![Sketch on a face](../images/studio-web-history.png)
+
+**Sketch on face** (View tab) or `UCS Face`, then click a face in the 3D view: the 2D view switches to that face —
+its outline is shown (and snaps), the origin is the face's lower-left corner and Y points up on walls. Draw a closed
+shape and `EXTRUDE` it: a **positive height adds material** to that solid, a **negative height cuts** a pocket or
+hole into it. Sketches on faces are drawn in 3D on their face. The bar under the 2D view switches between
+**MODEL**, each face (◇) and each layout (▭); `MODEL` or `UCS World` returns to the plan.
+
+## Parametric history
+
+Solids made by commands remember how they were built — a feature tree such as
+`Subtract(Box, Placement(Extrude))`. Select a solid and its **History** appears in the properties panel with every
+number (box size, cylinder radius, extrude height, gear teeth, …). Change one and the whole solid rebuilds,
+booleans and moves included; each change is one undo step. `PARAM` does the same from the command line.
+Moves, rotations, scales and mirrors are kept as placements; imported, AI and sample solids have no history.
+
+## Paper-space layouts
+
+![Layout](../images/studio-web-layout.png)
+
+`LAYOUT New` (or **+ LAYOUT**) creates a sheet (A4–A0, orientation) with a border, a title block and one viewport
+showing the model at the largest standard scale that fits (1:1, 1:2, 1:2.5, 1:5 × 10ⁿ). `MVIEW` adds viewports:
+two corners on the paper, a scale (`1:200`) and the model point at the centre. Anything drawn while a layout is
+active — notes, labels, extra dimensions — is in paper millimetres and belongs to that sheet. `PLOT` in a layout
+prints it 1:1 on its paper as PDF or SVG (several scales print "AS SHOWN" in the title block).
 
 ## Plotting
 
@@ -143,6 +175,17 @@ IoT enclosure (electronics), pill organiser (medical), dining set (furniture) an
 footbridge (civil).
 
 ![Desktop samples](../images/studio-desktop-samples.png)
+
+## Updates and signed installers
+
+The desktop edition looks for a newer release on GitHub a few seconds after it starts (and from **Output → Updates**):
+an **UPDATE x.y.z** button appears in the status bar and opens the download page. The request is anonymous and
+can be switched off with `GCAD_NO_UPDATE_CHECK=1`.
+
+The release workflow signs the installers when the repository has the secrets: `WINDOWS_CERT_PFX` +
+`WINDOWS_CERT_PASSWORD` (Authenticode, signtool) and `MACOS_CERT_P12` + `MACOS_CERT_PASSWORD` +
+`MACOS_SIGN_IDENTITY` (Developer ID with the hardened runtime), plus `APPLE_ID` + `APPLE_TEAM_ID` +
+`APPLE_APP_PASSWORD` for notarisation. Without them the builds are unsigned but otherwise identical.
 
 ## Desktop edition
 

@@ -122,6 +122,7 @@
             <TextBlock Text="GRID" FontFamily="{StaticResource LabelFont}" FontWeight="SemiBold" FontSize="12" LetterSpacing="1.4" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="8,0,4,0" />
             <TextBox x:Name="GridSizeBox" Width="64" MinHeight="18" Height="20" Padding="4,0" FontFamily="{StaticResource MonoFont}" FontSize="11.5" VerticalContentAlignment="Center" />
           </StackPanel>
+          <Button x:Name="UpdateButton" DockPanel.Dock="Right" Classes="chip on" IsVisible="False" Margin="8,0,0,0" Click="OnUpdateClick" />
           <TextBlock x:Name="StatusRight" DockPanel.Dock="Right" Classes="mono muted" VerticalAlignment="Center" />
           <TextBlock x:Name="StatusMid" Classes="mono muted" VerticalAlignment="Center" Margin="18,0" TextTrimming="CharacterEllipsis" />
         </DockPanel>

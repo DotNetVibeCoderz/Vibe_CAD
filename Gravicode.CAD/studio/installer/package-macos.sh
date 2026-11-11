@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Wraps an osx-arm64 publish folder into "Gravicode CAD Studio.app", a zipped .app and a .dmg (ad-hoc signed,
-# not notarised: first launch needs right-click > Open).
+# Wraps an osx-arm64 publish folder into "Gravicode CAD Studio.app", a zipped .app and a .dmg.
+# Signed with MACOS_SIGN_IDENTITY when set (the workflow then notarises the .dmg); ad-hoc signed otherwise.
 #   package-macos.sh <publish-dir> <version> <out-dir>
 set -euo pipefail
 SRC=$1; VER=$2; OUT=$3
@@ -24,7 +24,16 @@ iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/GravicodeCadStudio.icns"
 
 sed "s/__VERSION__/$VER/g" "$HERE/Info.plist" > "$APP/Contents/Info.plist"
 
-codesign --force --deep --sign - "$APP" || true
+# Developer ID signing with the hardened runtime when MACOS_SIGN_IDENTITY is set (release workflow);
+# otherwise an ad-hoc signature so Apple silicon will still launch the app.
+if [ -n "${MACOS_SIGN_IDENTITY:-}" ]; then
+  find "$APP/Contents/MacOS" -type f \( -name "*.dylib" -o -perm -u+x \) -print0 | while IFS= read -r -d '' f; do
+    codesign --force --timestamp --options runtime --entitlements "$HERE/entitlements.plist" --sign "$MACOS_SIGN_IDENTITY" "$f"
+  done
+  codesign --force --timestamp --options runtime --entitlements "$HERE/entitlements.plist" --sign "$MACOS_SIGN_IDENTITY" "$APP"
+else
+  codesign --force --deep --sign - "$APP" || true
+fi
 ditto -c -k --keepParent "$APP" "$OUT/GravicodeCadStudio-$VER-osx-arm64.app.zip"
 ln -s /Applications "$STAGE/Applications"
 hdiutil create -volname "Gravicode CAD Studio" -srcfolder "$STAGE" -ov -format UDZO "$OUT/GravicodeCadStudio-$VER-osx-arm64.dmg"

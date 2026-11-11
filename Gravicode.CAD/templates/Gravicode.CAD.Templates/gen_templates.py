@@ -4,7 +4,7 @@ Kept in the repo so templates can be regenerated consistently: python gen_templa
 import json
 import os
 
-V = "1.0.1"
+V = "1.1.0"
 CREDIT = "// Made with Gravicode.CAD — Dibuat oleh Gravicode Studios dipimpin oleh Kang Fadhil\n"
 
 

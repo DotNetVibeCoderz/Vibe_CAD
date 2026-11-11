@@ -62,7 +62,8 @@ Bantuan: **F3** object snap (endpoint, midpoint, center, quadrant, intersection)
 | Anotasi | DIMLINEAR (DLI) |
 | Block | BLOCK (B), INSERT (I) |
 | Keluaran | PLOT (PRINT) |
-| Solid | BOX, CYLINDER (CYL), CONE, SPHERE, TORUS (TOR), GEAR, EXTRUDE (EXT, bentuk bersarang jadi lubang), REVOLVE (REV), UNION (UNI), SUBTRACT (SU), INTERSECT (IN), ELEVATE (EL), 3DMOVE (3M), 3DROTATE (3R) |
+| Solid | BOX, CYLINDER (CYL), CONE, SPHERE, TORUS (TOR), GEAR, EXTRUDE (EXT, bentuk bersarang jadi lubang), REVOLVE (REV), UNION (UNI), SUBTRACT (SU), INTERSECT (IN), ELEVATE (EL), 3DMOVE (3M), 3DROTATE (3R), 3DSCALE (3S), PARAM (histori) |
+| Ruang | UCS (Face / World / List), MODEL (MS), LAYOUT (LO: New / Set / List / Delete), MVIEW (MV) |
 | Periksa | DIST (DI), AREA (AA), MASSPROP (MP), LIST (LI) |
 | Layer | LAYER (LA: New/Set/On/Off/Lock/Unlock/List), COLOR (COL) |
 | Tampilan | ZOOM (Z), VIEW3D, PLAN, GRID, ORTHO, OSNAP, SELECTALL |
@@ -80,6 +81,8 @@ Operasi boolean memakai kernel Rust bila tersedia (lihat status bar).
   Objek yang tidak dipotong apa pun akan terhapus. Mendukung garis, busur, lingkaran dan polyline (terbuka/tertutup).
 - **FILLET / CHAMFER** menyambung dua garis: `R` / `D` mengatur radius atau dua jarak (diingat antar-perintah),
   radius 0 membuat sudut tajam, dan `P` (Polyline) membulatkan atau memotong semua sudut polyline sekaligus.
+  Fillet polyline berupa **segmen busur sejati** (bulge, seperti LWPOLYLINE DXF): bisa di-snap ke tengah dan pusatnya,
+  tetap busur di DXF, dan EXPLODE memecahnya menjadi garis dan busur.
 - **Grip**: pilih objek saat tidak ada perintah berjalan dan grip biru muncul (hingga 100 objek). Klik grip, gerakkan,
   klik lagi untuk meletakkan — ujung dan tengah garis, pusat dan kuadran lingkaran, ujung/tengah/pusat busur,
   sudut polyline, ujung dimensi dan posisi garis dimensi. Esc membatalkan.
@@ -106,12 +109,42 @@ Bilah di kiri atas panel 3D mengganti gizmo:
 - **PINDAH**: seret panah merah/hijau/biru untuk memindah seleksi sepanjang X, Y atau Z. Langkahnya mengikuti ukuran
   grid (status bar `GRID`); tahan **Alt** untuk gerakan bebas.
 - **PUTAR**: seret cincin untuk memutar seleksi pada sumbu itu melalui pusatnya, per 15° (Alt = bebas).
+- **SKALA**: seret pegangan kotak ke luar untuk menskala seragam terhadap pusat, per 0,1 (Alt = bebas).
 - **PILIH**: tanpa gizmo, hanya memilih.
 
-Setiap seretan adalah satu langkah undo. Dari keyboard: `3DMOVE` (perpindahan `dx,dy,dz`) dan `3DROTATE` (sumbu
-X/Y/Z, sudut). Edisi desktop menggambar gizmo yang sama di atas tampilan GPU:
+Setiap seretan adalah satu langkah undo. Dari keyboard: `3DMOVE` (perpindahan `dx,dy,dz`), `3DROTATE` (sumbu
+X/Y/Z, sudut) dan `3DSCALE` (faktor). Edisi desktop menggambar gizmo yang sama di atas tampilan GPU:
 
 ![Gizmo desktop](../images/studio-desktop-gizmo.png)
+
+## Menggambar di permukaan
+
+![Gambar di permukaan](../images/studio-web-history.png)
+
+**Sketch on face** (tab Tampilan) atau `UCS Face`, lalu klik permukaan di tampilan 3D: tampilan 2D berpindah ke
+permukaan itu — garis tepinya terlihat (dan bisa di-snap), titik asal di sudut kiri bawah permukaan dan sumbu Y
+mengarah ke atas pada dinding. Gambar bentuk tertutup lalu `EXTRUDE`: **tinggi positif menambah material** pada
+solid itu, **tinggi negatif memotong** kantong atau lubang. Sketsa di permukaan juga tampil di 3D. Bilah di bawah
+tampilan 2D berpindah antara **MODEL**, setiap permukaan (◇) dan setiap layout (▭); `MODEL` atau `UCS World` kembali
+ke denah.
+
+## Histori parametrik
+
+Solid yang dibuat dengan perintah mengingat cara pembuatannya — pohon fitur seperti
+`Subtract(Box, Placement(Extrude))`. Pilih solid dan **Histori** tampil di panel properti dengan semua angkanya
+(ukuran box, radius silinder, tinggi extrude, jumlah gigi, …). Ubah satu angka dan seluruh solid dibangun ulang,
+termasuk boolean dan perpindahan; setiap perubahan satu langkah undo. `PARAM` melakukan hal yang sama dari baris
+perintah. Geser, putar, skala dan mirror disimpan sebagai penempatan; solid impor, AI dan contoh tidak punya histori.
+
+## Layout ruang kertas
+
+![Layout](../images/studio-web-layout.png)
+
+`LAYOUT New` (atau **+ LAYOUT**) membuat lembar (A4–A0, orientasi) dengan border, title block dan satu viewport
+yang menampilkan model pada skala standar terbesar yang muat (1:1, 1:2, 1:2,5, 1:5 × 10ⁿ). `MVIEW` menambah viewport:
+dua sudut di kertas, skala (`1:200`) dan titik model di tengahnya. Apa pun yang digambar saat layout aktif — catatan,
+label, dimensi tambahan — dalam milimeter kertas dan milik lembar itu. `PLOT` di layout mencetaknya 1:1 pada
+kertasnya sebagai PDF atau SVG (beberapa skala tercetak "AS SHOWN" di title block).
 
 ## Plotting
 
@@ -143,6 +176,17 @@ speaker Bluetooth (produk), gearbox roda gigi dan gambar flens (mekanik), roda &
 kotak obat mingguan (medis), set meja makan (furnitur) dan jembatan rangka yang dianalisis FEM (sipil).
 
 ![Contoh di desktop](../images/studio-desktop-samples.png)
+
+## Pembaruan dan installer bertanda tangan
+
+Edisi desktop memeriksa rilis baru di GitHub beberapa detik setelah dibuka (dan dari **Output → Updates**): tombol
+**PERBARUI x.y.z** muncul di status bar dan membuka halaman unduhan. Permintaannya anonim dan bisa dimatikan dengan
+`GCAD_NO_UPDATE_CHECK=1`.
+
+Workflow rilis menandatangani installer bila repositori punya secret: `WINDOWS_CERT_PFX` + `WINDOWS_CERT_PASSWORD`
+(Authenticode, signtool) dan `MACOS_CERT_P12` + `MACOS_CERT_PASSWORD` + `MACOS_SIGN_IDENTITY` (Developer ID dengan
+hardened runtime), serta `APPLE_ID` + `APPLE_TEAM_ID` + `APPLE_APP_PASSWORD` untuk notarisasi. Tanpa secret itu
+build tidak bertanda tangan tetapi selebihnya sama.
 
 ## Edisi desktop
 
