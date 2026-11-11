@@ -152,19 +152,7 @@ public sealed class DxfFormat : ICadImporter, ICadExporter
                                 model.Wires.Add(new Polyline3(verts.Select(v => tf.TransformPoint(new Vec3(v.Num(10), v.Num(20), v.Num(30)))), (flags & 1) != 0) { Layer = e.Layer, Color = color });
                             else
                             {
-                                var pts = new List<Vec2>();
-                                for (int vi = 0; vi < verts.Count; vi++)
-                                {
-                                    var a = new Vec2(verts[vi].Num(10), verts[vi].Num(20));
-                                    double bulge = verts[vi].Num(42);
-                                    pts.Add(a);
-                                    if (Math.Abs(bulge) > 1e-12 && (vi + 1 < verts.Count || (flags & 1) != 0))
-                                    {
-                                        var b = new Vec2(verts[(vi + 1) % verts.Count].Num(10), verts[(vi + 1) % verts.Count].Num(20));
-                                        pts.AddRange(BulgePoints(a, b, bulge, options.ChordTolerance));
-                                    }
-                                }
-                                d = new PolylineEntity(pts.Select(T), (flags & 1) != 0);
+                                d = new PolylineEntity(verts.Select(v => new Vec2(v.Num(10), v.Num(20))), (flags & 1) != 0, verts.Select(v => v.Num(42))).Transformed(T);
                             }
                             break;
                         }
@@ -195,30 +183,8 @@ public sealed class DxfFormat : ICadImporter, ICadExporter
             else if (p.Code == 42 && verts.Count > 0) verts[^1] = (verts[^1].P, D(p.Value));
         }
         bool closed = (e.Int(70) & 1) != 0;
-        var pts = new List<Vec2>();
-        for (int i = 0; i < verts.Count; i++)
-        {
-            pts.Add(verts[i].P);
-            if (Math.Abs(verts[i].Bulge) > 1e-12 && (i + 1 < verts.Count || closed))
-                pts.AddRange(BulgePoints(verts[i].P, verts[(i + 1) % verts.Count].P, verts[i].Bulge, tol));
-        }
-        return new PolylineEntity(pts, closed);
-    }
-
-    /// <summary>Interior points of a bulged polyline segment (bulge = tan(θ/4)).</summary>
-    private static IEnumerable<Vec2> BulgePoints(Vec2 a, Vec2 b, double bulge, double tol)
-    {
-        double theta = 4 * Math.Atan(bulge);
-        double chord = Vec2.Distance(a, b);
-        if (chord < 1e-12) yield break;
-        double r = chord / (2 * Math.Sin(Math.Abs(theta) / 2));
-        var mid = (a + b) * 0.5;
-        var dir = (b - a) / chord;
-        double h = r * Math.Cos(theta / 2) * Math.Sign(bulge);
-        var center = mid + dir.Perp() * h;
-        double a0 = (a - center).Angle;
-        int n = CurveMath.ArcSegments(Math.Abs(r), Math.Abs(theta), tol);
-        for (int i = 1; i < n; i++) yield return center + Vec2.FromAngle(a0 + theta * i / n, Math.Abs(r));
+        // arcs stay arcs: bulges are kept on the polyline
+        return new PolylineEntity(verts.Select(v => v.P), closed, verts.Select(v => v.Bulge));
     }
 
     private static List<Pair> ReadPairs(Stream s)
@@ -286,7 +252,12 @@ public sealed class DxfFormat : ICadImporter, ICadExporter
                 case TextEntity t: Head("TEXT"); N(10, t.Position.X); N(20, t.Position.Y); N(30, 0); N(40, t.Height); P(1, t.Text.Replace("\n", " ")); break;
                 case PolylineEntity pl:
                     Head("POLYLINE"); P(66, "1"); N(10, 0); N(20, 0); N(30, 0); P(70, pl.Closed ? "1" : "0");
-                    foreach (var v in pl.Points) { P(0, "VERTEX"); P(8, d.Layer); N(10, v.X); N(20, v.Y); N(30, 0); }
+                    for (int vi = 0; vi < pl.Points.Count; vi++)
+                    {
+                        var v = pl.Points[vi];
+                        P(0, "VERTEX"); P(8, d.Layer); N(10, v.X); N(20, v.Y); N(30, 0);
+                        if (Math.Abs(pl.Bulges[vi]) > 1e-12) N(42, pl.Bulges[vi]);
+                    }
                     P(0, "SEQEND"); P(8, d.Layer);
                     break;
             }

@@ -74,7 +74,11 @@ public sealed partial class SvgFormat : ICadImporter, ICadExporter
                         break;
                     }
                 case PolylineEntity p when p.Points.Count > 0:
-                    sb.AppendLine($"    <{(p.Closed ? "polygon" : "polyline")} points=\"{string.Join(' ', p.Points.Select(q => $"{X(q.X)},{Y(q.Y)}"))}\"{style}/>"); break;
+                    {
+                        // arc segments are written as their tessellation (the closing vertex is implied by <polygon>)
+                        var pts = p.HasArcs ? p.Tessellate(0.05).Take(p.Closed ? p.Tessellate(0.05).Count - 1 : int.MaxValue) : p.Points;
+                        sb.AppendLine($"    <{(p.Closed ? "polygon" : "polyline")} points=\"{string.Join(' ', pts.Select(q => $"{X(q.X)},{Y(q.Y)}"))}\"{style}/>"); break;
+                    }
                 case TextEntity t:
                     {
                         var fill = e.Layer == "DIM" ? "#2f6fde" : "#1b1f24";

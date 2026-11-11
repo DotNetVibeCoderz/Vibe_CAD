@@ -120,8 +120,16 @@ public static class Geometry2D
                 for (int i = 0; i < p.Points.Count; i++)
                 {
                     yield return (p.Points[i], SnapKind.Endpoint);
-                    if (i + 1 < p.Points.Count || p.Closed)
-                        yield return ((p.Points[i] + p.Points[(i + 1) % p.Points.Count]) / 2, SnapKind.Midpoint);
+                    if (i + 1 >= p.Points.Count && !p.Closed) continue;
+                    var a = p.Points[i]; var b = p.Points[(i + 1) % p.Points.Count];
+                    if (Math.Abs(p.Bulges[i]) > 1e-12)
+                    {
+                        // arc segment: its middle and its centre
+                        var (c, r, a0, sweep) = PolylineEntity.BulgeArc(a, b, p.Bulges[i]);
+                        yield return (c + Vec2.FromAngle(a0 + sweep / 2, r), SnapKind.Midpoint);
+                        yield return (c, SnapKind.Center);
+                    }
+                    else yield return ((a + b) / 2, SnapKind.Midpoint);
                 }
                 break;
             case DimensionEntity d:
@@ -185,14 +193,15 @@ public static class Geometry2D
                 }
             case PolylineEntity p when p.Closed && p.Points.Count >= 3:
                 {
-                    var poly = new Polygon2(p.Points);
+                    var poly = AsLoop(p)!;
                     bool outward = !poly.Contains(towards);
                     var o = poly.AsCounterClockwise().Offset(outward ? distance : -distance);
                     return new PolylineEntity(o.Points, true);
                 }
-            case PolylineEntity p when p.Points.Count >= 2:
+            case PolylineEntity p0 when p0.Points.Count >= 2:
                 {
-                    // open polyline: offset each segment and join with miter intersections
+                    // open polyline (arcs tessellated): offset each segment and join with miter intersections
+                    var p = p0.HasArcs ? new PolylineEntity(p0.Tessellate(0.05), false) : p0;
                     var n0 = (p.Points[1] - p.Points[0]).Normalized().Perp();
                     double side = Math.Sign(Vec2.Dot(towards - p.Points[0], n0));
                     if (side == 0) side = 1;
@@ -248,7 +257,7 @@ public static class Geometry2D
     public static Polygon2? AsLoop(DrawingEntity e, double tol = 0.05) => e switch
     {
         CircleEntity c => Polygon2.Circle(c.Radius, 0, c.Center, tol),
-        PolylineEntity p when p.Closed && p.Points.Count >= 3 => new Polygon2(p.Points),
+        PolylineEntity p when p.Closed && p.Points.Count >= 3 => new Polygon2(p.HasArcs ? p.Tessellate(tol).SkipLast(1) : p.Points),
         PolylineEntity p when p.Points.Count >= 4 && p.Points[0].ApproxEquals(p.Points[^1], 1e-6) => new Polygon2(p.Points),
         _ => null
     };

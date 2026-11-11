@@ -30,7 +30,8 @@ public static class Grips
     {
         var pts = p.Points;
         int n = pts.Count;
-        if (n <= 4) return [.. Enumerable.Range(0, n)];
+        // with real arc segments the vertex list is short and meaningful: grip every vertex
+        if (n <= 4 || (p.HasArcs && n <= 64)) return [.. Enumerable.Range(0, n)];
         var keep = new List<int>();
         for (int i = 0; i < n; i++)
         {
@@ -79,7 +80,7 @@ public static class Grips
                 {
                     var pts = p.Points.ToList();
                     pts[GripVertices(p)[index]] = to;
-                    return new PolylineEntity(pts, p.Closed);
+                    return new PolylineEntity(pts, p.Closed, p.Bulges);
                 }
             case DimensionEntity d:
                 {

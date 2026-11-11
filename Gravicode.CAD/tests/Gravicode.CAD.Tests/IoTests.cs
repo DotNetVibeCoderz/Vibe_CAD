@@ -145,8 +145,10 @@ END-ISO-10303-21;
         CadIO.RegisterAll();
         var m = CadModel.Load(new MemoryStream(System.Text.Encoding.ASCII.GetBytes(dxf)), "dxf");
         var pl = Assert.IsType<PolylineEntity>(m.Drawing[0]);
-        // bulge 1 = half circle of radius 5 -> max |y| = 5
-        Assert.Equal(5, pl.Points.Max(p => Math.Abs(p.Y)), 1);
+        // bulge 1 = half circle of radius 5: kept as an arc segment, max |y| = 5 once tessellated
+        Assert.Equal(2, pl.Points.Count);
+        Assert.Equal(1, pl.Bulges[0], 12);
+        Assert.Equal(5, pl.Tessellate().Max(p => Math.Abs(p.Y)), 1);
     }
 
     [Fact]

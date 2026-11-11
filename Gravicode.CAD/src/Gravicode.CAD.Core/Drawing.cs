@@ -92,13 +92,72 @@ public sealed class ArcEntity(Vec2 center, double radius, double startAngle, dou
     }
 }
 
-public sealed class PolylineEntity(IEnumerable<Vec2> points, bool closed) : DrawingEntity
+/// <summary>
+/// Polyline with optional arc segments. <see cref="Bulges"/>[i] describes the segment from vertex i to i+1 (wrapping
+/// for closed polylines) as in DXF: bulge = tan(θ/4), θ the included angle, positive = counter-clockwise, 0 = straight.
+/// </summary>
+public sealed class PolylineEntity : DrawingEntity
 {
-    public List<Vec2> Points { get; } = [.. points];
-    public bool Closed { get; set; } = closed;
-    public override IReadOnlyList<Vec2> Tessellate(double chordTolerance = 0.05) =>
-        Closed && Points.Count > 0 ? [.. Points, Points[0]] : Points;
-    public override DrawingEntity Transformed(Func<Vec2, Vec2> map) => new PolylineEntity(Points.Select(map), Closed) { Layer = Layer, Color = Color };
+    public PolylineEntity(IEnumerable<Vec2> points, bool closed, IEnumerable<double>? bulges = null)
+    {
+        Points = [.. points];
+        Closed = closed;
+        Bulges = bulges is null ? [.. Enumerable.Repeat(0.0, Points.Count)] : [.. bulges];
+        while (Bulges.Count < Points.Count) Bulges.Add(0);
+        if (Bulges.Count > Points.Count) Bulges.RemoveRange(Points.Count, Bulges.Count - Points.Count);
+    }
+
+    public List<Vec2> Points { get; }
+    public bool Closed { get; set; }
+    public List<double> Bulges { get; }
+    public bool HasArcs => Bulges.Any(b => Math.Abs(b) > 1e-12);
+
+    public override IReadOnlyList<Vec2> Tessellate(double chordTolerance = 0.05)
+    {
+        if (!HasArcs) return Closed && Points.Count > 0 ? [.. Points, Points[0]] : Points;
+        var r = new List<Vec2>(Points.Count * 4);
+        int segs = Closed ? Points.Count : Points.Count - 1;
+        for (int i = 0; i < Points.Count; i++)
+        {
+            r.Add(Points[i]);
+            if (i < segs && Math.Abs(Bulges[i]) > 1e-12) r.AddRange(BulgePoints(Points[i], Points[(i + 1) % Points.Count], Bulges[i], chordTolerance));
+        }
+        if (Closed && Points.Count > 0) r.Add(Points[0]);
+        return r;
+    }
+
+    public override DrawingEntity Transformed(Func<Vec2, Vec2> map)
+    {
+        // similarity maps keep arcs; a mirror reverses their direction
+        var o = map(Vec2.Zero); var ux = map(new Vec2(1, 0)) - o; var uy = map(new Vec2(0, 1)) - o;
+        double flip = Vec2.Cross(ux, uy) < 0 ? -1 : 1;
+        return new PolylineEntity(Points.Select(map), Closed, Bulges.Select(b => b * flip)) { Layer = Layer, Color = Color };
+    }
+
+    /// <summary>Centre, radius and signed sweep of a bulged segment from <paramref name="a"/> to <paramref name="b"/>.</summary>
+    public static (Vec2 Center, double Radius, double StartAngle, double Sweep) BulgeArc(Vec2 a, Vec2 b, double bulge)
+    {
+        double theta = 4 * Math.Atan(bulge);
+        double chord = Vec2.Distance(a, b);
+        double r = chord / (2 * Math.Sin(Math.Abs(theta) / 2));
+        var mid = (a + b) * 0.5;
+        var dir = (b - a) / Math.Max(chord, 1e-300);
+        double h = r * Math.Cos(theta / 2) * Math.Sign(bulge);
+        var center = mid + dir.Perp() * h;
+        return (center, Math.Abs(r), (a - center).Angle, theta);
+    }
+
+    /// <summary>Interior points of a bulged segment (excluding both ends).</summary>
+    public static IEnumerable<Vec2> BulgePoints(Vec2 a, Vec2 b, double bulge, double tol)
+    {
+        if (Vec2.Distance(a, b) < 1e-12) yield break;
+        var (c, r, a0, theta) = BulgeArc(a, b, bulge);
+        int n = Segments(r, Math.Abs(theta), tol);
+        for (int i = 1; i < n; i++) yield return c + Vec2.FromAngle(a0 + theta * i / n, r);
+    }
+
+    /// <summary>Bulge of the arc that turns by <paramref name="sweep"/> radians (positive = counter-clockwise).</summary>
+    public static double BulgeFromSweep(double sweep) => Math.Tan(sweep / 4);
 }
 
 public sealed class TextEntity(Vec2 position, string text, double height) : DrawingEntity

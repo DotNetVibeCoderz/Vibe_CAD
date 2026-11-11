@@ -42,6 +42,7 @@ public sealed class IgesFormat : ICadImporter, ICadExporter
                         entities.Add((100, 0, $"100,0,{N(c.Center.X)},{N(c.Center.Y)},{N(s.X)},{N(s.Y)},{N(s.X)},{N(s.Y)};")); break;
                     }
                 case PointEntity p: entities.Add((116, 0, $"116,{N(p.Position.X)},{N(p.Position.Y)},0.,0;")); break;
+                case PolylineEntity pl when pl.Points.Count >= 2 && pl.HasArcs: Poly([.. pl.Tessellate(0.05).Select(p => p.ToVec3())], false); break;
                 case PolylineEntity pl when pl.Points.Count >= 2: Poly([.. pl.Points.Select(p => p.ToVec3())], pl.Closed); break;
             }
         }

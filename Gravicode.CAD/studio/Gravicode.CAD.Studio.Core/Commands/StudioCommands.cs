@@ -446,7 +446,7 @@ public static partial class StudioCommands
                 d.Entities.RemoveAt(at);
                 IEnumerable<StudioEntity> parts = e.Geometry switch
                 {
-                    PolylineEntity pl => Pairs(pl.Tessellate()).Select(s => StudioEntity.Create(e.Layer, new LineEntity(s.A, s.B), e.Color)),
+                    PolylineEntity pl => PolylinePieces(pl).Select(g => StudioEntity.Create(e.Layer, g, e.Color)),
                     // a block explodes one level: its objects come back with their own layers and colours
                     BlockRefEntity br => br.Children().Select(ch => StudioEntity.Create(ch.Layer == "0" ? e.Layer : ch.Layer, ch.Geometry, ch.Color ?? e.Color)),
                     _ => Geometry2D.Primitives(e.Geometry).Select(pr => StudioEntity.Create(pr.Layer ?? e.Layer, pr.Geometry, pr.Color ?? e.Color))
@@ -458,9 +458,17 @@ public static partial class StudioCommands
         c.Print($"  {targets.Count} object(s) exploded.");
     }
 
-    private static IEnumerable<(Vec2 A, Vec2 B)> Pairs(IReadOnlyList<Vec2> pts)
+    /// <summary>A polyline's segments as lines and (for bulged segments) real arcs.</summary>
+    private static IEnumerable<DrawingEntity> PolylinePieces(PolylineEntity pl)
     {
-        for (int i = 0; i + 1 < pts.Count; i++) yield return (pts[i], pts[i + 1]);
+        int segs = pl.Closed ? pl.Points.Count : pl.Points.Count - 1;
+        for (int i = 0; i < segs; i++)
+        {
+            var a = pl.Points[i]; var b = pl.Points[(i + 1) % pl.Points.Count];
+            if (Math.Abs(pl.Bulges[i]) < 1e-12) { yield return new LineEntity(a, b); continue; }
+            var (c, r, a0, sweep) = PolylineEntity.BulgeArc(a, b, pl.Bulges[i]);
+            yield return sweep > 0 ? new ArcEntity(c, r, a0, a0 + sweep) : new ArcEntity(c, r, a0 + sweep, a0);
+        }
     }
 
     // ===================================================================== solids

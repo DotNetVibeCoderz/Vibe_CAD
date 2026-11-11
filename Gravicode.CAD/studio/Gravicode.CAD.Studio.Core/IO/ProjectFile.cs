@@ -29,7 +29,7 @@ public static class ProjectFile
     /// <summary>Block definition: its objects stored like model-space entities (relative to the base point).</summary>
     private sealed record BlockDto(string Name, List<EntityDto> Items, string? Description = null);
 
-    private sealed record EntityDto(Guid Id, string Layer, string? Color, string Kind, double[] V, string? Text = null, bool Closed = false);
+    private sealed record EntityDto(Guid Id, string Layer, string? Color, string Kind, double[] V, string? Text = null, bool Closed = false, double[]? B = null);
     private sealed record SolidDto(Guid Id, string Name, string Layer, string Color, double Metallic, double Roughness, string Positions, string Indices);
 
     public static byte[] Save(StudioDocument doc)
@@ -98,7 +98,7 @@ public static class ProjectFile
         LineEntity l => new(e.Id, e.Layer, e.Color, "line", [l.A.X, l.A.Y, l.B.X, l.B.Y]),
         CircleEntity c => new(e.Id, e.Layer, e.Color, "circle", [c.Center.X, c.Center.Y, c.Radius]),
         ArcEntity a => new(e.Id, e.Layer, e.Color, "arc", [a.Center.X, a.Center.Y, a.Radius, a.StartAngle, a.EndAngle]),
-        PolylineEntity p => new(e.Id, e.Layer, e.Color, "polyline", [.. p.Points.SelectMany(q => new[] { q.X, q.Y })], Closed: p.Closed),
+        PolylineEntity p => new(e.Id, e.Layer, e.Color, "polyline", [.. p.Points.SelectMany(q => new[] { q.X, q.Y })], Closed: p.Closed, B: p.HasArcs ? [.. p.Bulges] : null),
         TextEntity t => new(e.Id, e.Layer, e.Color, "text", [t.Position.X, t.Position.Y, t.Height], t.Text),
         PointEntity pt => new(e.Id, e.Layer, e.Color, "point", [pt.Position.X, pt.Position.Y]),
         DimensionEntity d => new(e.Id, e.Layer, e.Color, "dim", [d.A.X, d.A.Y, d.B.X, d.B.Y, d.Offset, d.TextHeight]),
@@ -117,7 +117,7 @@ public static class ProjectFile
             "line" => new LineEntity(new(v[0], v[1]), new(v[2], v[3])),
             "circle" => new CircleEntity(new(v[0], v[1]), v[2]),
             "arc" => new ArcEntity(new(v[0], v[1]), v[2], v[3], v[4]),
-            "polyline" => new PolylineEntity(Enumerable.Range(0, v.Length / 2).Select(i => new Vec2(v[2 * i], v[2 * i + 1])), e.Closed),
+            "polyline" => new PolylineEntity(Enumerable.Range(0, v.Length / 2).Select(i => new Vec2(v[2 * i], v[2 * i + 1])), e.Closed, e.B),
             "text" => new TextEntity(new(v[0], v[1]), e.Text ?? "", v[2]),
             "point" => new PointEntity(new(v[0], v[1])),
             "dim" => new DimensionEntity(new(v[0], v[1]), new(v[2], v[3]), v[4], v[5]),

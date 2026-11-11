@@ -291,7 +291,7 @@ public static class CurveOps
                     if (ext is null) return null;
                     var np = pts.ToList();
                     if (atEnd) np[^1] = ext.B; else np[0] = ext.A;
-                    return new PolylineEntity(np, false);
+                    return new PolylineEntity(np, false, pl.Bulges);
                 }
         }
         return null;
@@ -353,36 +353,39 @@ public static class CurveOps
         return new(new LineEntity(f1, t1), new LineEntity(f2, t2), new LineEntity(t1, t2));
     }
 
-    /// <summary>Fillets (radius &gt; 0) or chamfers every corner of a polyline; arcs are tessellated into the vertex list.</summary>
+    /// <summary>Fillets (radius &gt; 0) or chamfers every corner of a polyline. Fillets become real arc segments
+    /// (bulges); straight corners only — existing arc segments are kept as they are.</summary>
     public static PolylineEntity RoundCorners(PolylineEntity pl, double size, bool chamfer, double chordTolerance = 0.05)
     {
         var p = pl.Points;
         int n = p.Count;
-        if (n < 3 || size <= 0) return new PolylineEntity(p, pl.Closed);
-        var result = new List<Vec2>();
+        if (n < 3 || size <= 0) return new PolylineEntity(p, pl.Closed, pl.Bulges);
+        var pts = new List<Vec2>();
+        var bulges = new List<double>();
         for (int i = 0; i < n; i++)
         {
             bool endpoint = !pl.Closed && (i == 0 || i == n - 1);
-            if (endpoint) { result.Add(p[i]); continue; }
+            int prevSeg = (i - 1 + n) % n;
+            bool arcAround = Math.Abs(pl.Bulges[prevSeg]) > 1e-12 || Math.Abs(pl.Bulges[i]) > 1e-12;
             var prev = p[(i - 1 + n) % n]; var cur = p[i]; var next = p[(i + 1) % n];
-            var a = (prev - cur); var b = (next - cur);
+            var a = prev - cur; var b = next - cur;
             double la = a.Length, lb = b.Length;
-            if (la < 1e-12 || lb < 1e-12) { result.Add(cur); continue; }
+            double theta = la < 1e-12 || lb < 1e-12 ? 0 : Math.Acos(Math.Clamp(Vec2.Dot(a / la, b / lb), -1, 1));
+            if (endpoint || arcAround || theta < 1e-6 || Math.PI - theta < 1e-6)
+            {
+                pts.Add(cur); bulges.Add(pl.Bulges[i]);
+                continue;
+            }
             var ua = a / la; var ub = b / lb;
-            double theta = Math.Acos(Math.Clamp(Vec2.Dot(ua, ub), -1, 1));
-            if (theta < 1e-6 || Math.PI - theta < 1e-6) { result.Add(cur); continue; }
             // never consume more than half of either adjacent edge
             double d = chamfer ? size : size / Math.Tan(theta / 2);
             d = Math.Min(d, Math.Min(la, lb) / 2);
             var t1 = cur + ua * d; var t2 = cur + ub * d;
-            if (chamfer) { result.Add(t1); result.Add(t2); continue; }
-            double r = d * Math.Tan(theta / 2);
-            var c = cur + (ua + ub).Normalized() * (r / Math.Sin(theta / 2));
-            double a1 = (t1 - c).Angle, a2 = (t2 - c).Angle;
-            double sweep = Norm(a2 - a1); if (sweep > Math.PI) sweep -= TwoPi;
-            int segs = Math.Clamp((int)Math.Ceiling(Math.Abs(sweep) / (2 * Math.Acos(Math.Clamp(1 - chordTolerance / Math.Max(r, 1e-9), -1, 1)))), 2, 64);
-            for (int k = 0; k <= segs; k++) result.Add(c + Vec2.FromAngle(a1 + sweep * k / segs, r));
+            double turn = Math.PI - theta;                                 // direction change at the corner
+            double sign = Vec2.Cross(cur - prev, next - cur) >= 0 ? 1 : -1;  // left turn = counter-clockwise arc
+            pts.Add(t1); bulges.Add(chamfer ? 0 : PolylineEntity.BulgeFromSweep(sign * turn));
+            pts.Add(t2); bulges.Add(pl.Bulges[i]);
         }
-        return new PolylineEntity(result, pl.Closed);
+        return new PolylineEntity(pts, pl.Closed, bulges);
     }
 }

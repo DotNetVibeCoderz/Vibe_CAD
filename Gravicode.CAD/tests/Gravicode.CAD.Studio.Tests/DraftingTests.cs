@@ -120,8 +120,10 @@ public class DraftingTests
         e.RunScript("RECTANG 0,0 100,50\nFILLET R 5 P 50,0");
         var pl = Assert.Single(All<PolylineEntity>(doc));
         Assert.True(pl.Closed);
-        Assert.True(pl.Points.Count > 12);
-        var area = new Geometry.Polygon2(pl.Points).Area;
+        Assert.Equal(8, pl.Points.Count);                               // two tangent points per corner …
+        Assert.Equal(4, pl.Bulges.Count(b => Math.Abs(b) > 1e-9));       // … joined by four real arcs
+        Assert.All(pl.Bulges.Where(b => Math.Abs(b) > 1e-9), b => Assert.Equal(Math.Tan(Math.PI / 8), b, 9));
+        var area = new Geometry.Polygon2(pl.Tessellate(0.05).SkipLast(1)).Area;
         // each corner loses r² − πr²/4; the arcs are chords (0.05 tolerance), so a little less area remains
         double exact = 100 * 50 - 4 * (25 - Math.PI * 25 / 4);
         Assert.InRange(area, exact - 1.5, exact + 1e-6);
@@ -200,7 +202,9 @@ public class DraftingTests
     [Fact]
     public void Polyline_grips_skip_tessellated_arc_vertices()
     {
-        var rounded = CurveOps.RoundCorners(new PolylineEntity([new(0, 0), new(100, 0), new(100, 50), new(0, 50)], true), 10, chamfer: false);
+        // a hand-made tessellated outline (many shallow vertices, no arcs) only gets grips on real corners
+        var poly = Geometry.Polygon2.RoundedRectangle(100, 50, 10).Points;
+        var rounded = new PolylineEntity(poly, true);
         Assert.True(rounded.Points.Count > 20);
         Assert.True(Grips.Of(rounded).Count <= 12);
         // moving a grip moves the vertex it stands on
@@ -208,6 +212,32 @@ public class DraftingTests
         var moved = (PolylineEntity)Grips.Move(rounded, 0, g[0] + new Vec2(-5, -5))!;
         Assert.Contains(moved.Points, q => q.ApproxEquals(g[0] + new Vec2(-5, -5), 1e-9));
         Assert.Equal(rounded.Points.Count, moved.Points.Count);
+    }
+
+    [Fact]
+    public void Arc_segments_survive_dxf_explode_and_mirror()
+    {
+        var (doc, e) = New();
+        e.RunScript("RECTANG 0,0 100,50\nFILLET R 10 P 50,0");
+        var pl = Assert.Single(All<PolylineEntity>(doc));
+
+        // DXF keeps bulges (group 42) and reads them back as arcs
+        var dxf = ProjectFile.Export(doc, "dxf");
+        var back = CadModel.Load(new MemoryStream(dxf), ".dxf").Drawing.OfType<PolylineEntity>().Single();
+        Assert.Equal(4, back.Bulges.Count(b => Math.Abs(b) > 1e-9));
+
+        // mirroring flips the arc direction but keeps the shape (same area)
+        var m = (PolylineEntity)pl.Transformed(p => new Vec2(-p.X, p.Y));
+        Assert.All(m.Bulges.Where(b => Math.Abs(b) > 1e-9), b => Assert.True(b < 0));
+        Assert.Equal(new Geometry.Polygon2(pl.Tessellate().SkipLast(1)).Area, new Geometry.Polygon2(m.Tessellate().SkipLast(1)).Area, 6);
+
+        // EXPLODE gives four lines and four quarter arcs of radius 10
+        e.Selection.Add(doc.Entities[0].Id);
+        e.RunScript("EXPLODE");
+        Assert.Equal(4, All<LineEntity>(doc).Count);
+        var arcs = All<ArcEntity>(doc);
+        Assert.Equal(4, arcs.Count);
+        Assert.All(arcs, a => { Assert.Equal(10, a.Radius, 9); Assert.Equal(Math.PI / 2, a.Sweep, 9); });
     }
 
     [Fact]
