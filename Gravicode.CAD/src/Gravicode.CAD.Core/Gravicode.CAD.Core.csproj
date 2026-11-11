@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Gravicode.CAD</RootNamespace>
+    <Description>Gravicode.CAD core: double-precision math, transforms, bounding boxes, triangle meshes, the CAD model/document, units and the file-format registry.</Description>
+  </PropertyGroup>
+</Project>

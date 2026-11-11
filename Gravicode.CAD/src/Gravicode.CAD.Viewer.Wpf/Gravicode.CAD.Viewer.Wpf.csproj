@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Gravicode.CAD.Viewer.Wpf</RootNamespace>
+    <Description>Gravicode.CAD WPF viewport: a CadViewport control with orbit/pan/zoom that displays CadModel or any supported CAD file (bind Model or set Source).</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Gravicode.CAD.Rendering\Gravicode.CAD.Rendering.csproj" />
+    <ProjectReference Include="..\Gravicode.CAD.IO\Gravicode.CAD.IO.csproj" />
+  </ItemGroup>
+</Project>

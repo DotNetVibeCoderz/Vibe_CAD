@@ -1,0 +1,91 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:tn="clr-namespace:ThreeNet.Avalonia;assembly=ThreeNet.Avalonia"
+        x:Class="Gravicode.CAD.Gallery.Desktop.MainWindow"
+        Title="Gravicode.CAD Gallery"
+        Icon="avares://Gravicode.CAD.Gallery.Desktop/Assets/icon.png"
+        Width="1440" Height="900" MinWidth="1000" MinHeight="640"
+        Background="{StaticResource Vellum}">
+  <DockPanel>
+    <!-- top bar -->
+    <Border DockPanel.Dock="Top" Background="{StaticResource Sheet}" BorderBrush="{StaticResource Ink}" BorderThickness="0,0,0,1.5" Padding="18,10">
+      <DockPanel>
+        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <Image Source="avares://Gravicode.CAD.Gallery.Desktop/Assets/icon.png" Width="26" Height="26" />
+          <TextBlock Text="GRAVICODE.CAD" FontWeight="Bold" FontSize="16" LetterSpacing="1.2" Foreground="{StaticResource Ink}" VerticalAlignment="Center" />
+          <TextBlock Text="Gallery · ThreeNet renderer" FontFamily="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource InkSoft}" VerticalAlignment="Center" Margin="8,0,0,0" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
+          <TextBlock x:Name="RendererInfo" FontFamily="{StaticResource Mono}" FontSize="11" Foreground="{StaticResource InkSoft}" VerticalAlignment="Center" Margin="0,0,10,0" />
+          <Button Classes="export" Content="Open file…" Click="OnOpen" />
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- footer credits -->
+    <Border DockPanel.Dock="Bottom" Background="{StaticResource Sheet}" BorderBrush="{StaticResource Ink}" BorderThickness="0,1.5,0,0" Padding="18,8">
+      <DockPanel>
+        <TextBlock Text="DIBUAT OLEH GRAVICODE STUDIOS DIPIMPIN OLEH KANG FADHIL" FontFamily="{StaticResource Mono}" FontSize="11" Foreground="{StaticResource Ink}" />
+        <TextBlock x:Name="Status" HorizontalAlignment="Right" FontFamily="{StaticResource Mono}" FontSize="11" Foreground="{StaticResource InkSoft}" />
+      </DockPanel>
+    </Border>
+
+    <!-- drawing index -->
+    <Border DockPanel.Dock="Left" Width="250" BorderBrush="{StaticResource Rule}" BorderThickness="0,0,1,0">
+      <DockPanel Margin="10,14,10,10">
+        <TextBlock DockPanel.Dock="Top" Text="DRAWING INDEX" Classes="label" Margin="8,0,0,10" />
+        <ListBox x:Name="Index" Background="Transparent" SelectionChanged="OnSelect" />
+      </DockPanel>
+    </Border>
+
+    <!-- code & properties -->
+    <Border DockPanel.Dock="Right" Width="440" BorderBrush="{StaticResource Rule}" BorderThickness="1,0,0,0" Padding="16,14">
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Top" x:Name="Summary" TextWrapping="Wrap" FontSize="14" Foreground="{StaticResource Ink}" Margin="0,0,0,12" />
+        <TextBlock DockPanel.Dock="Top" Text="EXPORT" Classes="label" Margin="0,4,0,6" />
+        <WrapPanel DockPanel.Dock="Top" x:Name="Exports" Margin="0,0,0,14" />
+        <TextBlock DockPanel.Dock="Top" Text="PROPERTIES" Classes="label" Margin="0,0,0,6" />
+        <ItemsControl DockPanel.Dock="Top" x:Name="Facts" Margin="0,0,0,14" />
+        <TextBlock DockPanel.Dock="Top" Text="CODE" Classes="label" Margin="0,0,0,6" />
+        <Border Background="{StaticResource CodeBg}" CornerRadius="6" Padding="14">
+          <ScrollViewer HorizontalScrollBarVisibility="Auto">
+            <SelectableTextBlock x:Name="Code" FontFamily="{StaticResource Mono}" FontSize="12" Foreground="#D6E2FB" />
+          </ScrollViewer>
+        </Border>
+      </DockPanel>
+    </Border>
+
+    <!-- the drawing sheet -->
+    <Border Margin="18" Background="{StaticResource Sheet}" BorderBrush="{StaticResource Ink}" BorderThickness="1.5" Padding="12">
+      <Border BorderBrush="{StaticResource Ink}" BorderThickness="1">
+        <Grid RowDefinitions="*,Auto">
+          <Grid>
+            <tn:ThreeNetView x:Name="View" />
+            <Image x:Name="Fallback" Stretch="Uniform" IsVisible="False" />
+            <TextBlock x:Name="Building" Text="Building model…" FontFamily="{StaticResource Mono}" Foreground="#8B97A8" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" />
+          </Grid>
+          <!-- title block -->
+          <Border Grid.Row="1" BorderBrush="{StaticResource Ink}" BorderThickness="0,1,0,0" HorizontalAlignment="Right">
+            <Grid ColumnDefinitions="2.4*,Auto,Auto,Auto" MinWidth="620">
+              <Border BorderBrush="{StaticResource Ink}" BorderThickness="1,0,1,0" Padding="12,8">
+                <StackPanel Spacing="3">
+                  <TextBlock Text="TITLE" Classes="label" />
+                  <TextBlock x:Name="TbTitle" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Ink}" />
+                </StackPanel>
+              </Border>
+              <Border Grid.Column="1" BorderBrush="{StaticResource Ink}" BorderThickness="0,0,1,0" Padding="12,8">
+                <StackPanel Spacing="3"><TextBlock Text="CATEGORY" Classes="label" /><TextBlock x:Name="TbCat" Classes="value" /></StackPanel>
+              </Border>
+              <Border Grid.Column="2" BorderBrush="{StaticResource Ink}" BorderThickness="0,0,1,0" Padding="12,8">
+                <StackPanel Spacing="3"><TextBlock Text="SIZE" Classes="label" /><TextBlock x:Name="TbSize" Classes="value" /></StackPanel>
+              </Border>
+              <Border Grid.Column="3" Padding="12,8">
+                <StackPanel Spacing="3"><TextBlock Text="SHEET" Classes="label" /><TextBlock x:Name="TbSheet" Classes="value" /></StackPanel>
+              </Border>
+            </Grid>
+          </Border>
+        </Grid>
+      </Border>
+    </Border>
+  </DockPanel>
+</Window>

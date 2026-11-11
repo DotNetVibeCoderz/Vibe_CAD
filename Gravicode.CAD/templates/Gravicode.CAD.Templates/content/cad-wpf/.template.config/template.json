@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Gravicode Studios (led by Kang Fadhil)",
+  "classifications": [
+    "CAD",
+    "Desktop",
+    "WPF"
+  ],
+  "identity": "Gravicode.CAD.Templates.cad-wpf",
+  "name": "Gravicode.CAD WPF App",
+  "shortName": "cad-wpf",
+  "description": "WPF desktop app with a CadViewport control (orbit/pan/zoom) and file open.",
+  "sourceName": "CadApp",
+  "preferNameDirectory": true,
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  }
+}

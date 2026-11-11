@@ -1,0 +1,13 @@
+<Window x:Class="CadApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:gcad="clr-namespace:Gravicode.CAD.Viewer.Wpf;assembly=Gravicode.CAD.Viewer.Wpf"
+        Title="CadApp" Width="1100" Height="720">
+    <DockPanel>
+        <ToolBar DockPanel.Dock="Top">
+            <Button Content="Open…" Click="OnOpen" />
+            <Button Content="Fit" Click="OnFit" />
+        </ToolBar>
+        <gcad:CadViewport x:Name="Viewport" />
+    </DockPanel>
+</Window>

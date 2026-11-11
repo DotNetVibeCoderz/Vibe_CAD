@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Gravicode.CAD.Topology</RootNamespace>
+    <Description>Gravicode.CAD topology: half-edge structure over meshes, manifold / watertight validation, Euler characteristic and genus, boundary loops, feature edges, planar face segmentation (B-Rep-lite faces) and connected shells.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Gravicode.CAD.Geometry\Gravicode.CAD.Geometry.csproj" />
+  </ItemGroup>
+</Project>

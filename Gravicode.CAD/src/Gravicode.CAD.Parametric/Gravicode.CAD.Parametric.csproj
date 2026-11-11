@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Gravicode.CAD.Parametric</RootNamespace>
+    <Description>Gravicode.CAD parametric modeling: expression-driven parameters, a JSON-serialisable feature tree (box, cylinder, extrude, revolve, gear, hole, patterns, mirror, booleans) with rebuild, and a fluent CadQuery/Build123D-style part builder.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Gravicode.CAD.Geometry\Gravicode.CAD.Geometry.csproj" />
+  </ItemGroup>
+</Project>

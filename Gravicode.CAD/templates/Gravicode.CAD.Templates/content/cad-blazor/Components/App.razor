@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <title>CadApp</title>
+    <link rel="stylesheet" href="@Assets["CadApp.styles.css"]" />
+    <ImportMap />
+    <HeadOutlet @rendermode="InteractiveServer" />
+    <style>
+        body { margin: 0; font-family: system-ui, sans-serif; background: #0d1117; color: #e6edf3; }
+        main { display: grid; grid-template-columns: 300px 1fr; height: 100vh; }
+        aside { padding: 20px; border-right: 1px solid #222a35; }
+        label { display: block; margin: 14px 0 4px; font-size: 13px; color: #8b97a8; }
+        input[type=range] { width: 100%; }
+    </style>
+</head>
+<body>
+    <Routes @rendermode="InteractiveServer" />
+    <script src="_framework/blazor.web.js"></script>
+</body>
+</html>

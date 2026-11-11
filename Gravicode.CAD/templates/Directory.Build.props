@@ -1,0 +1,7 @@
+<Project>
+  <!-- Stops MSBuild from importing the repository-level props: template content must build standalone. -->
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,82 @@
+@page "/ai"
+@implements IDisposable
+@inject LanguageState L
+@using Gravicode.CAD.AI
+
+<PageTitle>Text to CAD · Gravicode.CAD Gallery</PageTitle>
+
+<section class="intro intro--compact">
+    <p class="eyebrow">AI-CAD · @(_provider?.Name ?? L.T("offline interpreter", "interpreter offline"))</p>
+    <h1>@L.T("Describe a part. Get a parametric model.", "Jelaskan part. Dapatkan model parametrik.")</h1>
+    <p class="lede">@L.T(
+        "The agent writes a feature tree, the kernel rebuilds it, and any rebuild error goes back to the model for a fix. Set ANTHROPIC_API_KEY on the server to use Claude; without it the offline interpreter handles common parts.",
+        "Agen menulis feature tree, kernel membangunnya ulang, dan setiap error dikirim kembali ke model untuk diperbaiki. Set ANTHROPIC_API_KEY di server untuk memakai Claude; tanpanya interpreter offline menangani part umum.")</p>
+</section>
+
+<form class="prompt" @onsubmit="GenerateAsync">
+    <label for="prompt">@L.T("Request", "Permintaan")</label>
+    <textarea id="prompt" rows="3" @bind="_prompt" @bind:event="oninput" placeholder="Create a gearbox housing with four mounting holes"></textarea>
+    <div class="prompt__row">
+        <div class="chips">
+            @foreach (var ex in Examples)
+            {
+                <button type="button" @onclick="() => _prompt = ex">@ex</button>
+            }
+        </div>
+        <button type="submit" class="primary" disabled="@(_busy || string.IsNullOrWhiteSpace(_prompt))">
+            @(_busy ? L.T("Generating…", "Membuat…") : L.T("Generate part", "Buat part"))
+        </button>
+    </div>
+</form>
+
+@if (_error is not null)
+{
+    <p class="notice">@_error</p>
+}
+
+@if (_result is not null)
+{
+    <section class="sheet sheet--short">
+        <div class="sheet__view"><CadViewer Model="_result.Model" Height="100%" Theme="light" /></div>
+        <div class="titleblock">
+            <div class="tb__name"><span class="tb__label">@L.T("Title", "Judul")</span><h1>@_result.Definition.Name</h1></div>
+            <div><span class="tb__label">@L.T("Provider", "Penyedia")</span><span class="tb__val">@_result.Provider</span></div>
+            <div><span class="tb__label">@L.T("Features", "Fitur")</span><span class="tb__val">@_result.Definition.Features.Count</span></div>
+            <div><span class="tb__label">@L.T("Attempts", "Percobaan")</span><span class="tb__val">@_result.Attempts</span></div>
+            <div><span class="tb__label">@L.T("Time", "Waktu")</span><span class="tb__val">@($"{_result.Elapsed.TotalSeconds:0.0} s")</span></div>
+            <div class="tb__credit">@GravicodeCad.CreditsId</div>
+        </div>
+    </section>
+    @if (_result.Explanation is { } ex)
+    {
+        <p class="summary">@ex</p>
+    }
+    <div class="code"><pre><code>@_result.Definition.ToJson()</code></pre></div>
+}
+
+@code {
+    private static readonly string[] Examples =
+    [
+        "Create a gearbox housing with four mounting holes",
+        "flange diameter 140 with 8 bolt holes",
+        "buat roda gigi 30 gigi modul 2 tebal 12",
+        "L bracket 50x70x60 thickness 5",
+    ];
+    private string _prompt = Examples[0];
+    private bool _busy;
+    private string? _error;
+    private TextToCadResult? _result;
+    private readonly ICadLanguageModel? _provider = ProviderFactory.FromEnvironment();
+
+    private async Task GenerateAsync()
+    {
+        _busy = true; _error = null;
+        try { _result = await new TextToCadAgent(_provider).GenerateAsync(_prompt); }
+        catch (Exception ex) { _error = L.T("Generation failed: ", "Gagal membuat part: ") + ex.Message; }
+        finally { _busy = false; }
+    }
+
+    protected override void OnInitialized() => L.Changed += Refresh;
+    private void Refresh() => InvokeAsync(StateHasChanged);
+    public void Dispose() => L.Changed -= Refresh;
+}

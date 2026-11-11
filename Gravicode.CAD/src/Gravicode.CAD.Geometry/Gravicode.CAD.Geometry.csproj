@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Gravicode.CAD.Geometry</RootNamespace>
+    <Description>Gravicode.CAD geometry kernel: curves (line, arc, Bezier, NURBS, helix), 2D polygons and offsets, ear-clipping triangulation with holes, primitive solids, extrude / revolve / sweep / loft and BSP mesh booleans (union, subtract, intersect).</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Gravicode.CAD.Core\Gravicode.CAD.Core.csproj" />
+  </ItemGroup>
+</Project>

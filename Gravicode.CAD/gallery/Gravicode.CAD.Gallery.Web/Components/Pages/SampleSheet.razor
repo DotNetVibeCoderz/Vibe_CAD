@@ -1,0 +1,143 @@
+@page "/sample/{Id}"
+@implements IDisposable
+@inject LanguageState L
+@inject ModelCache Cache
+@inject IJSRuntime JS
+
+@if (_sample is null)
+{
+    <PageTitle>Sheet not found</PageTitle>
+    <section class="empty">
+        <h1>@L.T("Sheet not found", "Lembar tidak ditemukan")</h1>
+        <p>@L.T("No sample is filed under", "Tidak ada contoh dengan kode") “@Id”. <a href="">@L.T("Open the catalogue", "Buka katalog")</a>.</p>
+    </section>
+}
+else
+{
+    <PageTitle>@_sample.Title · Gravicode.CAD Gallery</PageTitle>
+
+    <section class="sheet">
+        <div class="sheet__zones sheet__zones--top" aria-hidden="true"><span>A</span><span>B</span><span>C</span><span>D</span></div>
+        <div class="sheet__zones sheet__zones--side" aria-hidden="true"><span>1</span><span>2</span><span>3</span></div>
+        <div class="sheet__view">
+            @if (_model is null)
+            {
+                <div class="sheet__building">@L.T("Building model…", "Membangun model…")</div>
+            }
+            else
+            {
+                <CadViewer Model="_model" Height="100%" Theme="light" />
+            }
+        </div>
+
+        <div class="titleblock">
+            <div class="tb__name">
+                <span class="tb__label">@L.T("Title", "Judul")</span>
+                <h1>@_sample.Title</h1>
+            </div>
+            <div><span class="tb__label">@L.T("Category", "Kategori")</span><span class="tb__val">@_sample.Category</span></div>
+            <div><span class="tb__label">@L.T("Size", "Ukuran")</span><span class="tb__val">@_size</span></div>
+            <div><span class="tb__label">@L.T("Built in", "Waktu bangun")</span><span class="tb__val">@_buildMs</span></div>
+            <div><span class="tb__label">@L.T("Sheet", "Lembar")</span><span class="tb__val">@Layout.MainLayout.SheetNo(_sample) / @SampleCatalog.All.Count</span></div>
+            <div class="tb__credit">@GravicodeCad.CreditsId</div>
+        </div>
+    </section>
+
+    <p class="summary">@L.T(_sample.Summary, _sample.SummaryId)</p>
+
+    <div class="tabs" role="tablist">
+        <button role="tab" type="button" aria-selected="@(_tab == 0)" class="@(_tab == 0 ? "on" : "")" @onclick="() => _tab = 0">@L.T("Code", "Kode")</button>
+        <button role="tab" type="button" aria-selected="@(_tab == 1)" class="@(_tab == 1 ? "on" : "")" @onclick="() => _tab = 1">@L.T("Properties", "Properti")</button>
+        <button role="tab" type="button" aria-selected="@(_tab == 2)" class="@(_tab == 2 ? "on" : "")" @onclick="() => _tab = 2">@L.T("Download", "Unduh")</button>
+    </div>
+
+    <div class="panel" role="tabpanel">
+        @switch (_tab)
+        {
+            case 0:
+                <div class="code">
+                    <button type="button" class="code__copy" @onclick="CopyAsync">@(_copied ? L.T("Copied", "Tersalin") : L.T("Copy code", "Salin kode"))</button>
+                    <pre><code>@_sample.Code</code></pre>
+                </div>
+                break;
+            case 1:
+                @if (_model is not null)
+                {
+                    <dl class="facts">
+                        @foreach (var (k, v) in Sample.Facts(_model))
+                        {
+                            <div><dt>@k</dt><dd>@v</dd></div>
+                        }
+                    </dl>
+                    <table class="bodies">
+                        <thead><tr><th>@L.T("Body", "Body")</th><th>@L.T("Triangles", "Segitiga")</th><th>@L.T("Volume", "Volume")</th><th>@L.T("Colour", "Warna")</th></tr></thead>
+                        <tbody>
+                            @foreach (var b in _model.Bodies.Take(40))
+                            {
+                                <tr>
+                                    <td>@b.Name</td><td>@b.Mesh.TriangleCount.ToString("N0")</td><td>@b.Mesh.Volume.ToString("N0")</td>
+                                    <td><span class="swatch" style="background:@b.Color.ToHex()"></span>@b.Color.ToHex()</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                break;
+            default:
+                <ul class="downloads">
+                    @foreach (var (ext, label) in Formats)
+                    {
+                        <li><a href="@($"download/{_sample.Id}.{ext}")" download><span class="dl__ext">.@ext</span>@label</a></li>
+                    }
+                </ul>
+                break;
+        }
+    </div>
+
+    <nav class="pager" aria-label="@L.T("Neighbouring sheets", "Lembar lain")">
+        @if (Prev is { } p) { <a href="@($"sample/{p.Id}")">← @p.Title</a> } else { <span></span> }
+        @if (Next is { } n) { <a href="@($"sample/{n.Id}")">@n.Title →</a> }
+    </nav>
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+    private Sample? _sample;
+    private CadModel? _model;
+    private int _tab;
+    private bool _copied;
+    private string _size = "—", _buildMs = "—";
+
+    private static readonly (string Ext, string Label)[] Formats =
+    [
+        ("step", "STEP AP214"), ("stl", "STL (binary)"), ("glb", "glTF binary"), ("3mf", "3MF"),
+        ("obj", "Wavefront OBJ"), ("dxf", "DXF"), ("igs", "IGES (edges)"), ("pdf", "PDF drawing"), ("svg", "SVG drawing")
+    ];
+
+    private Sample? Prev => _sample is null ? null : SampleCatalog.All.ElementAtOrDefault(SampleCatalog.All.ToList().IndexOf(_sample) - 1);
+    private Sample? Next => _sample is null ? null : SampleCatalog.All.ElementAtOrDefault(SampleCatalog.All.ToList().IndexOf(_sample) + 1);
+
+    protected override void OnInitialized() => L.Changed += Refresh;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _sample = SampleCatalog.Find(Id);
+        _model = null; _copied = false; _size = "—"; _buildMs = "—";
+        if (_sample is null) return;
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var model = await Cache.GetAsync(_sample);
+        _buildMs = $"{sw.ElapsedMilliseconds} ms";
+        var bb = model.Bounds;
+        _size = $"{bb.Size.X:0.#} × {bb.Size.Y:0.#} × {bb.Size.Z:0.#} {model.Units.Symbol()}";
+        _model = model;
+    }
+
+    private async Task CopyAsync()
+    {
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", _sample!.Code);
+        _copied = true;
+    }
+
+    private void Refresh() => InvokeAsync(StateHasChanged);
+    public void Dispose() => L.Changed -= Refresh;
+}

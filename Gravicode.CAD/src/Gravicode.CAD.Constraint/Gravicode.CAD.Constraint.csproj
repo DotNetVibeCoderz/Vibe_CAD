@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Gravicode.CAD.Constraint</RootNamespace>
+    <Description>Gravicode.CAD 2D constraint solver: sketches of points, lines, circles and arcs with geometric and dimensional constraints (coincident, horizontal, vertical, parallel, perpendicular, tangent, distance, angle, radius, equal, fixed, point-on-line/circle, midpoint, symmetric) solved by damped Gauss-Newton (Levenberg-Marquardt).</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Gravicode.CAD.Geometry\Gravicode.CAD.Geometry.csproj" />
+  </ItemGroup>
+</Project>

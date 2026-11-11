@@ -1,0 +1,48 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Gravicode.CAD.Gallery.Desktop.App"
+             RequestedThemeVariant="Light">
+  <Application.Resources>
+    <!-- "drawing sheet" palette shared with the web gallery -->
+    <SolidColorBrush x:Key="Vellum" Color="#E9EDF1" />
+    <SolidColorBrush x:Key="Sheet" Color="#F8FAFC" />
+    <SolidColorBrush x:Key="Ink" Color="#14306B" />
+    <SolidColorBrush x:Key="InkSoft" Color="#4A5875" />
+    <SolidColorBrush x:Key="Cyan" Color="#2F6FDE" />
+    <SolidColorBrush x:Key="Pencil" Color="#D9442B" />
+    <SolidColorBrush x:Key="Rule" Color="#B9C3D3" />
+    <SolidColorBrush x:Key="CodeBg" Color="#0F1B33" />
+    <FontFamily x:Key="Mono">Cascadia Mono, Consolas, JetBrains Mono, monospace</FontFamily>
+  </Application.Resources>
+  <Application.Styles>
+    <FluentTheme />
+    <Style Selector="TextBlock.label">
+      <Setter Property="FontFamily" Value="{StaticResource Mono}" />
+      <Setter Property="FontSize" Value="10" />
+      <Setter Property="Foreground" Value="{StaticResource InkSoft}" />
+      <Setter Property="LetterSpacing" Value="0.8" />
+    </Style>
+    <Style Selector="TextBlock.value">
+      <Setter Property="FontFamily" Value="{StaticResource Mono}" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="Foreground" Value="{StaticResource Ink}" />
+    </Style>
+    <Style Selector="Button.export">
+      <Setter Property="Background" Value="{StaticResource Sheet}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Rule}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Foreground" Value="{StaticResource Ink}" />
+      <Setter Property="FontFamily" Value="{StaticResource Mono}" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Padding" Value="10,6" />
+      <Setter Property="CornerRadius" Value="4" />
+    </Style>
+    <Style Selector="ListBoxItem">
+      <Setter Property="Padding" Value="10,5" />
+      <Setter Property="CornerRadius" Value="4" />
+    </Style>
+    <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource Sheet}" />
+    </Style>
+  </Application.Styles>
+</Application>

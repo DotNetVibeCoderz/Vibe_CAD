@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Gravicode.CAD.FEM</RootNamespace>
+    <Description>Gravicode.CAD simulation: linear static finite element analysis — 2D/3D trusses, plane-stress solids (CST elements) with von Mises results, steady-state 2D heat conduction, a triangle mesher for profiles, sparse CSR matrices with a Jacobi-preconditioned conjugate-gradient solver, and colour-mapped result models.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Gravicode.CAD.Geometry\Gravicode.CAD.Geometry.csproj" />
+  </ItemGroup>
+</Project>

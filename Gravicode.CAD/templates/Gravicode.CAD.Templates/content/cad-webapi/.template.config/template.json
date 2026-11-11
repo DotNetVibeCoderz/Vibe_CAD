@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Gravicode Studios (led by Kang Fadhil)",
+  "classifications": [
+    "CAD",
+    "Web",
+    "WebAPI"
+  ],
+  "identity": "Gravicode.CAD.Templates.cad-webapi",
+  "name": "Gravicode.CAD Web API",
+  "shortName": "cad-webapi",
+  "description": "ASP.NET Core minimal API: convert CAD files, generate parametric parts and text-to-CAD.",
+  "sourceName": "CadApp",
+  "preferNameDirectory": true,
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  }
+}

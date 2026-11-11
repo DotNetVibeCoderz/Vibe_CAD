@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Gravicode.CAD.CAM</RootNamespace>
+    <Description>Gravicode.CAD manufacturing: 2.5D milling toolpaths (profile contour with tool compensation, zig-zag pocketing with islands, peck drilling), additive-manufacturing slicer (perimeters + rectilinear infill), G-code post-processing (GRBL/Marlin flavours) with time/length estimates and toolpath previews.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Gravicode.CAD.Geometry\Gravicode.CAD.Geometry.csproj" />
+  </ItemGroup>
+</Project>

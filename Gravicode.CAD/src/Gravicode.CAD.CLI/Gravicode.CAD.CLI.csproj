@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Gravicode.CAD.CLI</RootNamespace>
+    <AssemblyName>gcad</AssemblyName>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>gcad</ToolCommandName>
+    <PackageId>gravicode-cad</PackageId>
+    <Description>gcad — the Gravicode.CAD command-line tool: convert between STEP/IGES/STL/OBJ/glTF/3MF/DXF/SVG/PDF, inspect and validate models, render PNG previews, make engineering drawings, rebuild parametric parts, slice for 3D printing and generate CAD from text with AI.</Description>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Gravicode.CAD.AI\Gravicode.CAD.AI.csproj" />
+    <ProjectReference Include="..\Gravicode.CAD.CAM\Gravicode.CAD.CAM.csproj" />
+    <ProjectReference Include="..\Gravicode.CAD.Rendering\Gravicode.CAD.Rendering.csproj" />
+    <ProjectReference Include="..\Gravicode.CAD.Native\Gravicode.CAD.Native.csproj" />
+  </ItemGroup>
+</Project>

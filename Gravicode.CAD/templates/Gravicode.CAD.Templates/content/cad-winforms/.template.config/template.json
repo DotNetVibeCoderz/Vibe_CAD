@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Gravicode Studios (led by Kang Fadhil)",
+  "classifications": [
+    "CAD",
+    "Desktop",
+    "WinForms"
+  ],
+  "identity": "Gravicode.CAD.Templates.cad-winforms",
+  "name": "Gravicode.CAD WinForms App",
+  "shortName": "cad-winforms",
+  "description": "WinForms desktop app with viewport.Load(\"engine.step\").",
+  "sourceName": "CadApp",
+  "preferNameDirectory": true,
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  }
+}

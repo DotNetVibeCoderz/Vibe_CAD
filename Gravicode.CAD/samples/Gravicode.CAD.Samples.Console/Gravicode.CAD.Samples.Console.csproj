@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Gravicode.CAD.IO\Gravicode.CAD.IO.csproj" />
+    <ProjectReference Include="..\..\src\Gravicode.CAD.Parametric\Gravicode.CAD.Parametric.csproj" />
+    <ProjectReference Include="..\..\src\Gravicode.CAD.Rendering\Gravicode.CAD.Rendering.csproj" />
+    <ProjectReference Include="..\..\src\Gravicode.CAD.Native\Gravicode.CAD.Native.csproj" />
+  </ItemGroup>
+</Project>

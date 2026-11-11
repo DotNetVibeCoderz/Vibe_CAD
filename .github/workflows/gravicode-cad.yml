@@ -1,0 +1,168 @@
+# Gravicode.CAD CI — builds the Rust engine for every platform, builds and tests the .NET solution,
+# packs all NuGet packages and publishes them to nuget.org on version tags.
+#   Release:  git tag gravicode-cad-v1.0.0 && git push origin gravicode-cad-v1.0.0
+#   Manual:   Actions → Gravicode.CAD → Run workflow (publish = true)
+# Requires repository secret NUGET_API_KEY.
+name: Gravicode.CAD
+
+on:
+  push:
+    branches: [main]
+    paths: ["Gravicode.CAD/**", ".github/workflows/gravicode-cad.yml"]
+    tags: ["gravicode-cad-v*"]
+  pull_request:
+    paths: ["Gravicode.CAD/**", ".github/workflows/gravicode-cad.yml"]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish packages to nuget.org"
+        type: boolean
+        default: false
+      version:
+        description: "Package version (defaults to the version in Directory.Build.props)"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gravicode-cad-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  ROOT: Gravicode.CAD
+
+jobs:
+  native:
+    name: Rust engine (${{ matrix.rid }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, rid: win-x64,     file: gravicode_cad_engine.dll }
+          - { os: ubuntu-latest,  rid: linux-x64,   file: libgravicode_cad_engine.so }
+          - { os: macos-latest,   rid: osx-arm64,   file: libgravicode_cad_engine.dylib }
+    defaults:
+      run:
+        working-directory: Gravicode.CAD/native/gravicode-cad-engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: Gravicode.CAD/native/gravicode-cad-engine
+      - run: cargo test --release
+      - run: cargo build --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.rid }}
+          path: Gravicode.CAD/native/gravicode-cad-engine/target/release/${{ matrix.file }}
+          if-no-files-found: error
+
+  build:
+    name: Build, test & pack
+    needs: native
+    runs-on: windows-latest   # WPF / WinForms viewers need the Windows desktop SDK
+    defaults:
+      run:
+        working-directory: Gravicode.CAD
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: Gravicode.CAD/global.json
+
+      - name: Collect native libraries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: native-*
+          path: native-artifacts
+
+      - name: Place native libraries into runtimes/
+        shell: pwsh
+        run: |
+          foreach ($dir in Get-ChildItem ../native-artifacts -Directory) {
+            $rid = $dir.Name -replace '^native-', ''
+            $dest = "src/Gravicode.CAD.Native/runtimes/$rid/native"
+            New-Item -ItemType Directory -Force $dest | Out-Null
+            Copy-Item "$($dir.FullName)/*" $dest -Force
+            Get-ChildItem $dest | ForEach-Object { "  $rid/$($_.Name) ($($_.Length) bytes)" }
+          }
+
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          $v = "${{ inputs.version }}"
+          if (-not $v -and "${{ github.ref_type }}" -eq "tag") { $v = "${{ github.ref_name }}" -replace '^gravicode-cad-v', '' }
+          if (-not $v) { $v = ([xml](Get-Content Directory.Build.props)).Project.PropertyGroup[0].Version }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          "Version: $v"
+
+      - name: Restore
+        run: dotnet restore Gravicode.CAD.slnx
+
+      - name: Build
+        run: dotnet build Gravicode.CAD.slnx -c Release --no-restore -p:Version=${{ steps.version.outputs.version }}
+
+      - name: Test
+        run: dotnet test tests/Gravicode.CAD.Tests -c Release --no-build --logger "trx;LogFileName=results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: Gravicode.CAD/tests/Gravicode.CAD.Tests/TestResults/*.trx
+
+      - name: Pack
+        shell: pwsh
+        run: |
+          $v = "${{ steps.version.outputs.version }}"
+          Get-ChildItem src -Filter *.csproj -Recurse | ForEach-Object {
+            dotnet pack $_.FullName -c Release --no-build -o artifacts/packages -p:Version=$v
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+          }
+          dotnet pack templates/Gravicode.CAD.Templates/Gravicode.CAD.Templates.csproj -c Release -o artifacts/packages -p:Version=$v
+          Get-ChildItem artifacts/packages | Format-Table Name, Length
+
+      - name: Smoke-test the gcad tool package
+        shell: pwsh
+        run: |
+          dotnet tool install gravicode-cad --tool-path ./.tools --add-source artifacts/packages --version ${{ steps.version.outputs.version }}
+          ./.tools/gcad about
+          ./.tools/gcad shape gear 2 24 10 8 -o gear.step
+          ./.tools/gcad validate gear.step
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: Gravicode.CAD/artifacts/packages/*.nupkg
+          if-no-files-found: error
+
+  publish:
+    name: Publish to nuget.org
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/gravicode-cad-v') || (github.event_name == 'workflow_dispatch' && inputs.publish)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: nuget-packages
+          path: packages
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Push packages
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          if [ -z "$NUGET_API_KEY" ]; then echo "NUGET_API_KEY secret is not set"; exit 1; fi
+          for p in packages/*.nupkg; do
+            dotnet nuget push "$p" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          done

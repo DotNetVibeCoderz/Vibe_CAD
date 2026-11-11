@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Gravicode.CAD.Rendering</RootNamespace>
+    <Description>Gravicode.CAD rendering: renderer-agnostic camera / scene settings and a dependency-free, multi-threaded software rasterizer (PBR-ish shading, feature-edge overlay, SSAA, ground shadow) producing PNG thumbnails and screenshots.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Gravicode.CAD.Topology\Gravicode.CAD.Topology.csproj" />
+  </ItemGroup>
+</Project>

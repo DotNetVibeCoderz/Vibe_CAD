@@ -1,0 +1,33 @@
+@page "/"
+
+<main>
+    <aside>
+        <h2>Flange</h2>
+        <label>Outer diameter: @_od mm</label>
+        <input type="range" min="60" max="220" @bind="_od" @bind:event="oninput" @bind:after="Rebuild" />
+        <label>Bolt holes: @_bolts</label>
+        <input type="range" min="3" max="16" @bind="_bolts" @bind:event="oninput" @bind:after="Rebuild" />
+        <label>Thickness: @_t mm</label>
+        <input type="range" min="6" max="30" @bind="_t" @bind:event="oninput" @bind:after="Rebuild" />
+        <p style="font-size:12px;color:#8b97a8;margin-top:24px">Made with Gravicode.CAD</p>
+    </aside>
+    <CadViewer Model="_model" Height="100vh" />
+</main>
+
+@code {
+    private double _od = 140, _t = 14;
+    private int _bolts = 8;
+    private CadModel? _model;
+
+    protected override void OnInitialized() => Rebuild();
+
+    private void Rebuild()
+    {
+        var def = new PartDefinition { Name = "Flange" };
+        def.Parameters["od"] = _od; def.Parameters["t"] = _t; def.Parameters["id"] = "od / 3";
+        def.Features.Add(new CylinderFeature { Diameter = "od", Height = "t", Color = "#C8734A" });
+        def.Features.Add(new HoleFeature { Diameter = "id", Z = "t" });
+        def.Features.Add(new PatternFeature { Kind = "circular", Count = _bolts, Source = new HoleFeature { Diameter = 10, X = "od * 0.38", Z = "t" } });
+        _model = def.Build();
+    }
+}

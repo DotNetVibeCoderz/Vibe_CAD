@@ -1,0 +1,20 @@
+[package]
+name = "gravicode-cad-engine"
+version = "1.0.0"
+edition = "2021"
+authors = ["Gravicode Studios (led by Kang Fadhil)"]
+description = "Gravicode.CAD native engine: high-performance mesh kernels (mass properties, normals, welding, slicing) exposed through a C ABI for .NET"
+license = "MIT"
+
+[lib]
+name = "gravicode_cad_engine"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

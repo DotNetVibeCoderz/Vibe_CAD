@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>Gravicode.CAD.Viewer.WinForms</RootNamespace>
+    <Description>Gravicode.CAD WinForms viewport: a CadViewport control with orbit/pan/zoom (viewport.Load("engine.step")).</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Gravicode.CAD.Rendering\Gravicode.CAD.Rendering.csproj" />
+    <ProjectReference Include="..\Gravicode.CAD.IO\Gravicode.CAD.IO.csproj" />
+  </ItemGroup>
+</Project>

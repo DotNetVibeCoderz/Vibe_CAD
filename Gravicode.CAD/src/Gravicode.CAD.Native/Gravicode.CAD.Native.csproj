@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Gravicode.CAD.Native</RootNamespace>
+    <Description>Gravicode.CAD native engine bindings: P/Invoke wrapper over the Rust gravicode-cad-engine (mass properties, normals, welding, slicing). Call NativeEngine.Enable() to route the SDK's mesh kernels through Rust; falls back to managed code when the native library is unavailable.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Gravicode.CAD.Core\Gravicode.CAD.Core.csproj" />
+  </ItemGroup>
+  <!-- Prebuilt native binaries: run build-native.ps1 (cargo build in release mode in native/gravicode-cad-engine) -->
+  <ItemGroup>
+    <None Include="runtimes\**\*.*" Pack="true" PackagePath="runtimes\" CopyToOutputDirectory="PreserveNewest" Link="runtimes\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

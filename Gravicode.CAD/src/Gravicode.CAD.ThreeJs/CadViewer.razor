@@ -1,0 +1,22 @@
+@namespace Gravicode.CAD.ThreeJs
+@implements IAsyncDisposable
+
+<div class="gcad-viewer @Class" style="height:@Height; @Style">
+    @* JS owns this element's children; Blazor never renders into it *@
+    <div class="gcad-viewer__surface" @ref="_host"></div>
+    @if (_status is not null)
+    {
+        <div class="gcad-viewer__status">@_status</div>
+    }
+    @if (ShowToolbar)
+    {
+        <div class="gcad-viewer__toolbar" role="toolbar" aria-label="View">
+            <button type="button" title="Isometric" @onclick='() => SetViewAsync("iso")'>ISO</button>
+            <button type="button" title="Front" @onclick='() => SetViewAsync("front")'>F</button>
+            <button type="button" title="Top" @onclick='() => SetViewAsync("top")'>T</button>
+            <button type="button" title="Right" @onclick='() => SetViewAsync("right")'>R</button>
+            <button type="button" title="Toggle edges" class="@(ShowEdges ? "on" : "")" @onclick="ToggleEdgesAsync">▱</button>
+            <button type="button" title="Fit" @onclick="FitAsync">⤢</button>
+        </div>
+    }
+</div>

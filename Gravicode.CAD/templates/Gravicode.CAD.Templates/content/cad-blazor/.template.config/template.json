@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Gravicode Studios (led by Kang Fadhil)",
+  "classifications": [
+    "CAD",
+    "Web",
+    "Blazor"
+  ],
+  "identity": "Gravicode.CAD.Templates.cad-blazor",
+  "name": "Gravicode.CAD Blazor App",
+  "shortName": "cad-blazor",
+  "description": "Blazor Web App with the three.js CadViewer and live parametric sliders.",
+  "sourceName": "CadApp",
+  "preferNameDirectory": true,
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  }
+}

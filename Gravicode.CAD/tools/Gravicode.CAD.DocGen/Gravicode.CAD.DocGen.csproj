@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <Description>Regenerates the NuGet icon, documentation images and gallery sample files.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Gravicode.CAD.AI\Gravicode.CAD.AI.csproj" />
+    <ProjectReference Include="..\..\src\Gravicode.CAD.FEM\Gravicode.CAD.FEM.csproj" />
+    <ProjectReference Include="..\..\src\Gravicode.CAD.CAM\Gravicode.CAD.CAM.csproj" />
+    <ProjectReference Include="..\..\src\Gravicode.CAD.Rendering\Gravicode.CAD.Rendering.csproj" />
+    <ProjectReference Include="..\..\src\Gravicode.CAD.Native\Gravicode.CAD.Native.csproj" />
+    <ProjectReference Include="..\..\gallery\Gravicode.CAD.Gallery.Samples\Gravicode.CAD.Gallery.Samples.csproj" />
+  </ItemGroup>
+</Project>

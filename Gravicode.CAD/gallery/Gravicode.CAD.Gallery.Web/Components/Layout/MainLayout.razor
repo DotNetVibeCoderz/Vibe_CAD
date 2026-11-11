@@ -1,0 +1,59 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject LanguageState L
+
+<div class="frame">
+    <header class="topbar">
+        <a class="mark" href="">
+            <img src="icon.png" alt="" width="28" height="28" />
+            <span class="mark__name">Gravicode.CAD</span>
+            <span class="mark__sub">Gallery</span>
+        </a>
+        <nav class="topnav" aria-label="Sections">
+            <NavLink href="" Match="NavLinkMatch.All">@L.T("Catalogue", "Katalog")</NavLink>
+            <NavLink href="ai">@L.T("Text to CAD", "Teks ke CAD")</NavLink>
+        </nav>
+        <div class="lang" role="group" aria-label="Language">
+            <button type="button" class="@(L.Indonesian ? "" : "on")" aria-pressed="@(!L.Indonesian)" @onclick="() => L.Set(false)">EN</button>
+            <button type="button" class="@(L.Indonesian ? "on" : "")" aria-pressed="@L.Indonesian" @onclick="() => L.Set(true)">ID</button>
+        </div>
+    </header>
+
+    <div class="body">
+        <aside class="index" aria-label="@L.T("Sample index", "Indeks contoh")">
+            <p class="index__title">@L.T("Drawing index", "Indeks gambar")</p>
+            @foreach (var cat in SampleCatalog.Categories)
+            {
+                var items = SampleCatalog.All.Where(s => s.Category == cat).ToList();
+                if (items.Count == 0) continue;
+                <p class="index__cat">@cat</p>
+                <ul>
+                    @foreach (var s in items)
+                    {
+                        <li><NavLink href="@($"sample/{s.Id}")"><span class="index__no">@SheetNo(s)</span>@s.Title</NavLink></li>
+                    }
+                </ul>
+            }
+        </aside>
+        <main class="content">
+            @Body
+        </main>
+    </div>
+
+    <footer class="credits">
+        <span>@L.T(GravicodeCad.Credits, GravicodeCad.CreditsId)</span>
+        <span class="credits__ver">Gravicode.CAD @GravicodeCad.Version · .NET 10 · Rust engine</span>
+    </footer>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    @L.T("The connection to the server was lost.", "Koneksi ke server terputus.")
+    <a href="." class="reload">@L.T("Reload", "Muat ulang")</a>
+</div>
+
+@code {
+    public static string SheetNo(Sample s) => $"{SampleCatalog.All.ToList().IndexOf(s) + 1:00}";
+    protected override void OnInitialized() => L.Changed += Refresh;
+    private void Refresh() => InvokeAsync(StateHasChanged);
+    public void Dispose() => L.Changed -= Refresh;
+}

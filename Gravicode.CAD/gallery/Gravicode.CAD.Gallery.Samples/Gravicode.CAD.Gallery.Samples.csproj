@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <Description>Gravicode.CAD Gallery sample catalogue shared by the Blazor and Avalonia galleries.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Gravicode.CAD.AI\Gravicode.CAD.AI.csproj" />
+    <ProjectReference Include="..\..\src\Gravicode.CAD.Constraint\Gravicode.CAD.Constraint.csproj" />
+    <ProjectReference Include="..\..\src\Gravicode.CAD.FEM\Gravicode.CAD.FEM.csproj" />
+    <ProjectReference Include="..\..\src\Gravicode.CAD.CAM\Gravicode.CAD.CAM.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,48 @@
+@page "/"
+@implements IDisposable
+@inject LanguageState L
+
+<PageTitle>Gravicode.CAD Gallery</PageTitle>
+
+<section class="intro">
+    <p class="eyebrow">@L.T("Sample catalogue", "Katalog contoh") · @SampleCatalog.All.Count @L.T("sheets", "lembar")</p>
+    <h1>@L.T("CAD you can read, run and rebuild — in C#.", "CAD yang bisa dibaca, dijalankan, dan dibangun ulang — dengan C#.")</h1>
+    <p class="lede">@L.T(
+        "Each sheet is a working sample: the model is built live by the library on the server, shown in a three.js viewer, and downloadable as STEP, STL, glTF, 3MF, DXF or a PDF drawing.",
+        "Setiap lembar adalah contoh yang berjalan: model dibangun langsung oleh library di server, ditampilkan dengan viewer three.js, dan bisa diunduh sebagai STEP, STL, glTF, 3MF, DXF atau gambar PDF.")</p>
+    <pre class="install"><code>dotnet add package Gravicode.CAD.Parametric
+dotnet add package Gravicode.CAD.IO
+dotnet tool install -g gravicode-cad</code></pre>
+</section>
+
+<div class="filters" role="group" aria-label="@L.T("Filter by category", "Filter kategori")">
+    <button type="button" class="@(_cat is null ? "on" : "")" @onclick="() => _cat = null">@L.T("All", "Semua")</button>
+    @foreach (var c in SampleCatalog.Categories)
+    {
+        <button type="button" class="@(_cat == c ? "on" : "")" @onclick="() => _cat = c">@c</button>
+    }
+</div>
+
+<ul class="cards">
+    @foreach (var s in SampleCatalog.All.Where(s => _cat is null || s.Category == _cat))
+    {
+        <li>
+            <a class="card" href="@($"sample/{s.Id}")">
+                <span class="card__img"><img src="@($"thumbs/{s.Id}.png")" alt="" loading="lazy" /></span>
+                <span class="card__meta">
+                    <span class="card__no">@L.T("Sheet", "Lembar") @Layout.MainLayout.SheetNo(s)</span>
+                    <span class="card__cat">@s.Category</span>
+                </span>
+                <span class="card__title">@s.Title</span>
+                <span class="card__text">@L.T(s.Summary, s.SummaryId)</span>
+            </a>
+        </li>
+    }
+</ul>
+
+@code {
+    private string? _cat;
+    protected override void OnInitialized() => L.Changed += Refresh;
+    private void Refresh() => InvokeAsync(StateHasChanged);
+    public void Dispose() => L.Changed -= Refresh;
+}

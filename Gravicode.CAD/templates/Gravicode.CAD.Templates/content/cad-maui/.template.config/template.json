@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Gravicode Studios (led by Kang Fadhil)",
+  "classifications": [
+    "CAD",
+    "Mobile",
+    "MAUI"
+  ],
+  "identity": "Gravicode.CAD.Templates.cad-maui",
+  "name": "Gravicode.CAD MAUI App",
+  "shortName": "cad-maui",
+  "description": ".NET MAUI app showing a parametric CAD part preview with a slider.",
+  "sourceName": "CadApp",
+  "preferNameDirectory": true,
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  }
+}

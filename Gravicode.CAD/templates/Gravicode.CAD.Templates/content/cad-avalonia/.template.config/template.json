@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Gravicode Studios (led by Kang Fadhil)",
+  "classifications": [
+    "CAD",
+    "Desktop",
+    "Avalonia"
+  ],
+  "identity": "Gravicode.CAD.Templates.cad-avalonia",
+  "name": "Gravicode.CAD Avalonia App",
+  "shortName": "cad-avalonia",
+  "description": "Cross-platform desktop app (Avalonia 12) rendering CAD models through ThreeNet (DirectX 12 / Metal / Vulkan).",
+  "sourceName": "CadApp",
+  "preferNameDirectory": true,
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  }
+}

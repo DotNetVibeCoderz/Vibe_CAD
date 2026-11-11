@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Gravicode.CAD.ThreeNet</RootNamespace>
+    <Description>Gravicode.CAD desktop rendering adapter for ThreeNet (Rust + wgpu: DirectX 12, Metal, Vulkan): turns CAD models into ThreeNet scenes with PBR materials, crease-aware normals, feature-edge overlays, studio lighting and camera framing.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="ThreeNet" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Gravicode.CAD.Rendering\Gravicode.CAD.Rendering.csproj" />
+  </ItemGroup>
+</Project>

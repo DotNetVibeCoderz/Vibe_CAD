@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <RootNamespace>Gravicode.CAD.ThreeJs</RootNamespace>
+    <Description>Gravicode.CAD web viewer for Blazor (Server, WebAssembly and Hybrid): the &lt;CadViewer&gt; component renders CAD models with three.js — PBR materials, feature edges, grid, orbit/pan/zoom, view cube presets and PNG snapshots. Any format Gravicode.CAD can read (STEP, STL, OBJ, glTF, 3MF, DXF, IGES) can be shown.</Description>
+    <AddRazorSupportForMvc>false</AddRazorSupportForMvc>
+  </PropertyGroup>
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Gravicode.CAD.IO\Gravicode.CAD.IO.csproj" />
+  </ItemGroup>
+</Project>

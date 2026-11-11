@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <PackageType>Template</PackageType>
+    <PackageId>Gravicode.CAD.Templates</PackageId>
+    <Version>1.0.0</Version>
+    <Title>Gravicode.CAD project templates</Title>
+    <Authors>Gravicode Studios</Authors>
+    <Description>dotnet new templates for Gravicode.CAD: cad-console, cad-webapi, cad-blazor, cad-wpf, cad-winforms, cad-avalonia and cad-maui. Made by Gravicode Studios, led by Kang Fadhil.</Description>
+    <PackageTags>dotnet-new;templates;cad;gravicode</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IncludeContentInPack>true</IncludeContentInPack>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <ContentTargetFolders>content</ContentTargetFolders>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+    <EnableDefaultItems>false</EnableDefaultItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="content\**\*" Exclude="content\**\bin\**;content\**\obj\**" />
+    <None Include="..\..\assets\icon.png" Pack="true" PackagePath="\" />
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+</Project>

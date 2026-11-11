@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Gravicode.CAD.IO</RootNamespace>
+    <NoWarn>$(NoWarn);CA2255</NoWarn>
+    <Description>Gravicode.CAD interoperability: import/export of STEP (AP214 faceted B-Rep + planar advanced faces), IGES, STL (ASCII/binary), OBJ, glTF 2.0/GLB, 3MF, DXF, SVG and PDF drawings (orthographic views with title block).</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Gravicode.CAD.Topology\Gravicode.CAD.Topology.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Gravicode Studios (led by Kang Fadhil)",
+  "classifications": [
+    "CAD",
+    "Console"
+  ],
+  "identity": "Gravicode.CAD.Templates.cad-console",
+  "name": "Gravicode.CAD Console App",
+  "shortName": "cad-console",
+  "description": "Console app that builds a parametric part and exports STEP, STL, glTF, a PDF drawing and a PNG preview.",
+  "sourceName": "CadApp",
+  "preferNameDirectory": true,
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  }
+}

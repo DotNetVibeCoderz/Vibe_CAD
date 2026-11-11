@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <RootNamespace>Gravicode.CAD.Gallery.Desktop</RootNamespace>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <ApplicationIcon>..\..\assets\icon.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Avalonia.Fonts.Inter" />
+    <PackageReference Include="ThreeNet.Avalonia" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Gravicode.CAD.Gallery.Samples\Gravicode.CAD.Gallery.Samples.csproj" />
+    <ProjectReference Include="..\..\src\Gravicode.CAD.ThreeNet\Gravicode.CAD.ThreeNet.csproj" />
+    <ProjectReference Include="..\..\src\Gravicode.CAD.Native\Gravicode.CAD.Native.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="..\..\assets\icon-128.png" Link="Assets\icon.png" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <RootNamespace>Gravicode.CAD.Gallery.Web</RootNamespace>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Gravicode.CAD.Gallery.Samples\Gravicode.CAD.Gallery.Samples.csproj" />
+    <ProjectReference Include="..\..\src\Gravicode.CAD.ThreeJs\Gravicode.CAD.ThreeJs.csproj" />
+    <ProjectReference Include="..\..\src\Gravicode.CAD.Native\Gravicode.CAD.Native.csproj" />
+  </ItemGroup>
+  <!-- wwwroot/thumbs and wwwroot/icon.png are written by tools/Gravicode.CAD.DocGen -->
+</Project>

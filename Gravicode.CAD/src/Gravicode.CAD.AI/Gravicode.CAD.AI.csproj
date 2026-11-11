@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Gravicode.CAD.AI</RootNamespace>
+    <Description>Gravicode.CAD AI-CAD: text-to-CAD agent that turns natural-language requests into validated parametric part definitions, then exports CAD model, STEP, STL and drawings. Providers: Claude (official Anthropic SDK), any OpenAI-compatible endpoint (Azure OpenAI, DeepSeek, Hugging Face router) and an offline rule-based interpreter.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Anthropic" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Gravicode.CAD.Parametric\Gravicode.CAD.Parametric.csproj" />
+    <ProjectReference Include="..\Gravicode.CAD.IO\Gravicode.CAD.IO.csproj" />
+  </ItemGroup>
+</Project>
