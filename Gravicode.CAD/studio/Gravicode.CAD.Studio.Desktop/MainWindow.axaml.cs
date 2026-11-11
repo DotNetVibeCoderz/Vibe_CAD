@@ -97,6 +97,7 @@ public partial class MainWindow : Window
         };
         Gizmo.Moved += d => _engine.Move3D(d);
         Gizmo.Rotated += (axis, angle, pivot) => _engine.Rotate3D(axis, angle, pivot);
+        Gizmo.Scaled += (factor, pivot) => _engine.Scale3D(factor, pivot);
         // a click (no drag) in the 3D view picks a solid; drags orbit the camera
         View3D.AddHandler(PointerPressedEvent, (_, e) =>
         {
@@ -214,7 +215,9 @@ public partial class MainWindow : Window
 
     private void UpdateGizmoBar()
     {
-        GzSelect.Content = T("SELECT", "PILIH"); GzMove.Content = T("MOVE", "PINDAH"); GzRotate.Content = T("ROTATE", "PUTAR");
+        GzSelect.Content = T("SELECT", "PILIH"); GzMove.Content = T("MOVE", "PINDAH"); GzRotate.Content = T("ROTATE", "PUTAR"); GzScale.Content = T("SCALE", "SKALA");
+        ToolTip.SetTip(GzScale, T("Drag a handle outwards to scale uniformly in 0.1 steps (Alt = free)", "Seret pegangan keluar untuk menskala per 0,1 (Alt = bebas)"));
+        GzScale.Classes.Set("on", _gizmoMode == "scale");
         ToolTip.SetTip(GzSelect, T("Click solids to select them (Shift adds)", "Klik solid untuk memilih (Shift menambah)"));
         ToolTip.SetTip(GzMove, T("Drag an arrow to move along X, Y or Z (Alt = no snap)", "Seret panah untuk memindah sepanjang X, Y atau Z (Alt = tanpa snap)"));
         ToolTip.SetTip(GzRotate, T("Drag a ring to rotate in 15° steps (Alt = free)", "Seret cincin untuk memutar per 15° (Alt = bebas)"));

@@ -20,6 +20,7 @@ public static partial class StudioCommands
         R("BLOCK", ["B"], "Blocks", "Turns selected objects into a named block", BlockCmd);
         R("INSERT", ["I"], "Blocks", "Places a block (scale and rotation)", InsertCmd);
         R("3DMOVE", ["3M"], "Solid", "Moves solids by a 3D displacement dx,dy,dz (or drag the gizmo in the 3D view)", Move3DCmd);
+        R("3DSCALE", ["3S"], "Solid", "Scales solids uniformly about their centre", Scale3DCmd);
         R("3DROTATE", ["3R"], "Solid", "Rotates solids about the X, Y or Z axis through their centre", Rotate3DCmd);
         R("PLOT", ["PRINT"], "Output", "Plots the drawing to a PDF or SVG sheet (A4–A0) with scale and title block", PlotCmd);
     }
@@ -318,6 +319,19 @@ public static partial class StudioCommands
         var pivot = Solid3D.Bounds(c.Doc, ids).Center;
         Solid3D.Transform(c.Doc, ids, Mat4.RotateAround(pivot, axis, Units.Deg(ang)), "3D rotate");
         c.Print($"  Rotated {ids.Count} solid(s) {ang.ToString("0.##", InvC)}° about {c.Keyword ?? "Z"}.");
+    }
+
+    private static IEnumerable<Prompt> Scale3DCmd(CommandContext c)
+    {
+        foreach (var p in RequireSelection(c, "Select solids")) yield return p;
+        var ids = c.SelectedSolids.Select(s => s.Id).ToList();
+        if (ids.Count == 0) { c.Print("  Select solids."); yield break; }
+        yield return Prompt.Distance("Scale factor", null, 2);
+        double f = c.IsEnd ? 2 : c.Number;
+        if (f <= 0) { c.Print("  The factor must be positive."); yield break; }
+        var pivot = Solid3D.Bounds(c.Doc, ids).Center;
+        Solid3D.Transform(c.Doc, ids, Mat4.Translation3(pivot) * Mat4.Scale(f) * Mat4.Translation3(-1 * pivot), "3D scale");
+        c.Print($"  Scaled {ids.Count} solid(s) ×{f.ToString("0.###", InvC)}.");
     }
 
     // ===================================================================== PLOT

@@ -76,6 +76,7 @@
               <Button x:Name="GzSelect" Classes="chip" Click="OnGizmoMode" Tag="" />
               <Button x:Name="GzMove" Classes="chip" Click="OnGizmoMode" Tag="move" />
               <Button x:Name="GzRotate" Classes="chip" Click="OnGizmoMode" Tag="rotate" />
+              <Button x:Name="GzScale" Classes="chip" Click="OnGizmoMode" Tag="scale" />
             </StackPanel>
           </Panel>
         </Grid>

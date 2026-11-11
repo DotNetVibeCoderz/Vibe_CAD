@@ -22,7 +22,7 @@ public sealed class GizmoOverlay : Control, ICustomHitTest
     private static readonly Typeface Mono = new(new FontFamily("avares://GravicodeCadStudio/Assets/Fonts#JetBrains Mono"), FontStyle.Normal, FontWeight.Medium);
     private const double ArrowPx = 95, RingFactor = 0.8, HitPx = 8;
 
-    /// <summary>null (hidden), "move" or "rotate".</summary>
+    /// <summary>null (hidden), "move", "rotate" or "scale".</summary>
     public string? Mode { get; set; }
     /// <summary>Gizmo origin in CAD space; null hides it.</summary>
     public Vec3? Pivot { get; set; }
@@ -32,6 +32,7 @@ public sealed class GizmoOverlay : Control, ICustomHitTest
 
     public event Action<Vec3>? Moved;
     public event Action<Vec3, double, Vec3>? Rotated;   // axis, radians, pivot
+    public event Action<double, Vec3>? Scaled;          // factor, pivot
 
     private int _hover = -1;
     private (int Axis, Point Start, double StartAngle, double Value)? _drag;
@@ -78,7 +79,7 @@ public sealed class GizmoOverlay : Control, ICustomHitTest
         for (int i = 0; i < 3; i++)
         {
             double d = double.MaxValue;
-            if (Mode == "move") { if (Screen(pivot + Axes[i].Dir * L) is { } tip) d = SegDist(p, pc, tip); }
+            if (Mode is "move" or "scale") { if (Screen(pivot + Axes[i].Dir * L) is { } tip) d = SegDist(p, pc, tip); }
             else { var ring = Ring(pivot, Axes[i].Dir, L * RingFactor); for (int k = 0; k + 1 < ring.Count; k++) d = Math.Min(d, SegDist(p, ring[k], ring[k + 1])); }
             if (d < bd) { bd = d; best = i; }
         }
@@ -97,7 +98,15 @@ public sealed class GizmoOverlay : Control, ICustomHitTest
         {
             var pivot = Pivot!.Value; var axis = Axes[d.Axis].Dir;
             double value;
-            if (Mode == "move")
+            if (Mode == "scale")
+            {
+                // dragging the handle outwards by its own length doubles the size
+                var pc = Screen(pivot)!.Value; var tip = Screen(pivot + axis * Length(pivot))!.Value;
+                var s = tip - pc; double len2 = s.X * s.X + s.Y * s.Y;
+                value = len2 < 1e-9 ? 1 : Math.Max(0.05, 1 + ((p.X - d.Start.X) * s.X + (p.Y - d.Start.Y) * s.Y) / len2);
+                if (!e.KeyModifiers.HasFlag(KeyModifiers.Alt)) value = Math.Max(0.1, Math.Round(value * 10) / 10);
+            }
+            else if (Mode == "move")
             {
                 var pc = Screen(pivot)!.Value; var tip = Screen(pivot + axis * Length(pivot))!.Value;
                 var s = tip - pc; double len2 = s.X * s.X + s.Y * s.Y;
@@ -134,7 +143,7 @@ public sealed class GizmoOverlay : Control, ICustomHitTest
         var p = e.GetPosition(this);
         int h = HandleAt(p);
         if (h < 0) return;
-        _drag = (h, p, ScreenAngle(p), 0);
+        _drag = (h, p, ScreenAngle(p), Mode == "scale" ? 1 : 0);
         e.Pointer.Capture(this);
         e.Handled = true;
     }
@@ -147,7 +156,8 @@ public sealed class GizmoOverlay : Control, ICustomHitTest
         e.Pointer.Capture(null);
         e.Handled = true;
         var axis = Axes[d.Axis].Dir;
-        if (Math.Abs(d.Value) > 1e-9)
+        if (Mode == "scale") { if (Math.Abs(d.Value - 1) > 1e-9) Scaled?.Invoke(d.Value, Pivot!.Value); }
+        else if (Math.Abs(d.Value) > 1e-9)
         {
             if (Mode == "move") Moved?.Invoke(axis * d.Value);
             else Rotated?.Invoke(axis, d.Value, Pivot!.Value);
@@ -171,7 +181,14 @@ public sealed class GizmoOverlay : Control, ICustomHitTest
             bool hot = i == _hover || _drag?.Axis == i;
             var color = hot ? Hover : Axes[i].Color;
             var pen = new Pen(new SolidColorBrush(color), hot ? 3 : 2.2, lineCap: PenLineCap.Round);
-            if (Mode == "move")
+            if (Mode == "scale")
+            {
+                double grow = _drag is { } sd && Mode == "scale" ? sd.Value : 1;
+                if (Screen(pivot + Axes[i].Dir * L * grow) is not { } tip) continue;
+                g.DrawLine(pen, pc, tip);
+                g.DrawRectangle(new SolidColorBrush(color), null, new Rect(tip.X - 6, tip.Y - 6, 12, 12));
+            }
+            else if (Mode == "move")
             {
                 if (Screen(pivot + Axes[i].Dir * L) is not { } tip) continue;
                 g.DrawLine(pen, pc, tip);
@@ -206,9 +223,12 @@ public sealed class GizmoOverlay : Control, ICustomHitTest
 
         if (_drag is { } dd)
         {
-            string text = Mode == "move"
-                ? $"{Axes[dd.Axis].Name} {(dd.Value >= 0 ? "+" : "")}{dd.Value.ToString("0.###", CultureInfo.InvariantCulture)}"
-                : $"{Axes[dd.Axis].Name} {Units.ToDegrees(dd.Value).ToString("0.#", CultureInfo.InvariantCulture)}°";
+            string text = Mode switch
+            {
+                "move" => $"{Axes[dd.Axis].Name} {(dd.Value >= 0 ? "+" : "")}{dd.Value.ToString("0.###", CultureInfo.InvariantCulture)}",
+                "scale" => $"×{dd.Value.ToString("0.###", CultureInfo.InvariantCulture)}",
+                _ => $"{Axes[dd.Axis].Name} {Units.ToDegrees(dd.Value).ToString("0.#", CultureInfo.InvariantCulture)}°"
+            };
             var ft = new FormattedText(text, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, Mono, 13, new SolidColorBrush(Colors.White));
             var at = pc + new Point(14, -30);
             g.DrawRectangle(new SolidColorBrush(Color.FromArgb(220, 14, 16, 20)), new Pen(new SolidColorBrush(Hover), 1), new Rect(at.X - 6, at.Y - 3, ft.Width + 12, ft.Height + 6), 3, 3);

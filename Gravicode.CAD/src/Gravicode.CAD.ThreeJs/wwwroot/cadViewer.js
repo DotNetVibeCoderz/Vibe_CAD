@@ -129,7 +129,7 @@ class CadViewer {
 
   // ---------------------------------------------------------------- selection & gizmo
 
-  /** selectable: clicks report bodies; highlighted: body indices; gizmo: null | 'move' | 'rotate'; snap: move step. */
+  /** selectable: clicks report bodies; highlighted: body indices; gizmo: null | 'move' | 'rotate' | 'scale'; snap: move step. */
   setInteraction(opts) {
     this.selectable = !!opts.selectable;
     this.highlighted = new Set(opts.highlighted ?? []);
@@ -163,7 +163,14 @@ class CadViewer {
       const mat = new THREE.MeshBasicMaterial({ color: a.color, depthTest: false, transparent: true, opacity: 0.95 });
       const hitMat = new THREE.MeshBasicMaterial({ visible: false });
       const part = new THREE.Group();
-      if (this.gizmoMode === 'move') {
+      if (this.gizmoMode === 'scale') {
+        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.85, 8), mat); shaft.position.y = 0.425;
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.14), mat); head.position.y = 0.9;
+        const hit = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 1.05, 8), hitMat); hit.position.y = 0.52;
+        part.add(shaft, head, hit);
+        part.quaternion.setFromUnitVectors(up, a.dir);
+        this.handles.push({ axis: a, hit, mat });
+      } else if (this.gizmoMode === 'move') {
         const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.8, 8), mat); shaft.position.y = 0.4;
         const head = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.2, 16), mat); head.position.y = 0.9;
         const hit = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 1.05, 8), hitMat); hit.position.y = 0.52;
@@ -225,14 +232,14 @@ class CadViewer {
     if (!h) return false;
     const axis = h.axis.dir.clone(), pivot = this.gizmo.position.clone();
     let normal;
-    if (this.gizmoMode === 'move') {
+    if (this.gizmoMode === 'move' || this.gizmoMode === 'scale') {
       // plane containing the axis that faces the camera best
       const view = new THREE.Vector3().subVectors(this.camera.position, pivot).normalize();
       normal = new THREE.Vector3().crossVectors(axis, new THREE.Vector3().crossVectors(view, axis)).normalize();
       if (normal.lengthSq() < 1e-9) return false;
     } else normal = axis.clone();
     const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, pivot);
-    this.gizmoDrag = { handle: h, axis, pivot, plane, start: null, value: 0 };
+    this.gizmoDrag = { handle: h, axis, pivot, plane, start: null, value: this.gizmoMode === 'scale' ? 1 : 0, length: this.gizmo.scale.x * 0.9 };
     this.gizmoDrag.start = this.#dragPoint(e);
     if (!this.gizmoDrag.start) { this.gizmoDrag = null; return false; }
     // live preview: the selected objects move inside a group pivoted at the gizmo
@@ -250,7 +257,13 @@ class CadViewer {
   #gizmoMove(e) {
     const d = this.gizmoDrag, p = this.#dragPoint(e);
     if (!p) return;
-    if (this.gizmoMode === 'move') {
+    if (this.gizmoMode === 'scale') {
+      // dragging the handle outwards by its own length doubles the size
+      let f = Math.max(0.05, 1 + new THREE.Vector3().subVectors(p, d.start).dot(d.axis) / d.length);
+      if (!e.altKey) f = Math.max(0.1, Math.round(f * 10) / 10);
+      d.value = f;
+      this.dragGroup.scale.setScalar(f);
+    } else if (this.gizmoMode === 'move') {
       let t = new THREE.Vector3().subVectors(p, d.start).dot(d.axis);
       if (this.snap > 0 && !e.altKey) t = Math.round(t / this.snap) * this.snap;
       d.value = t;
@@ -269,9 +282,10 @@ class CadViewer {
     const d = this.gizmoDrag;
     this.gizmoDrag = null;
     d.handle.mat.color.setHex(d.handle.axis.color);
-    if (Math.abs(d.value) < 1e-9 || !this.dotnet) {
+    const idle = this.gizmoMode === 'scale' ? Math.abs(d.value - 1) < 1e-9 : Math.abs(d.value) < 1e-9;
+    if (idle || !this.dotnet) {
       // nothing to commit: put the objects back where they were
-      this.dragGroup.position.copy(d.pivot); this.dragGroup.quaternion.identity(); this.dragGroup.updateMatrixWorld();
+      this.dragGroup.position.copy(d.pivot); this.dragGroup.quaternion.identity(); this.dragGroup.scale.setScalar(1); this.dragGroup.updateMatrixWorld();
       for (const o of [...this.dragGroup.children]) this.content.attach(o);
       this.dragGroup.removeFromParent();
       this.dragGroup = null;
@@ -279,8 +293,9 @@ class CadViewer {
     }
     // the host applies the edit and sends a new scene, which replaces the preview
     const a = d.axis, p = d.pivot;
-    if (this.gizmoMode === 'move') this.dotnet.invokeMethodAsync('OnGizmoFromJs', 'move', a.x * d.value, a.y * d.value, a.z * d.value, a.x, a.y, a.z, 0, p.x, p.y, p.z);
-    else this.dotnet.invokeMethodAsync('OnGizmoFromJs', 'rotate', 0, 0, 0, a.x, a.y, a.z, d.value, p.x, p.y, p.z);
+    if (this.gizmoMode === 'move') this.dotnet.invokeMethodAsync('OnGizmoFromJs', 'move', a.x * d.value, a.y * d.value, a.z * d.value, a.x, a.y, a.z, 0, p.x, p.y, p.z, 1);
+    else if (this.gizmoMode === 'scale') this.dotnet.invokeMethodAsync('OnGizmoFromJs', 'scale', 0, 0, 0, a.x, a.y, a.z, 0, p.x, p.y, p.z, d.value);
+    else this.dotnet.invokeMethodAsync('OnGizmoFromJs', 'rotate', 0, 0, 0, a.x, a.y, a.z, d.value, p.x, p.y, p.z, 1);
   }
 
   #pick(e) {

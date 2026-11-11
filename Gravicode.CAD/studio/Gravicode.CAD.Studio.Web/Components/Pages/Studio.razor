@@ -70,6 +70,7 @@
         (null, S.T("SELECT", "PILIH"), S.T("Click solids to select them (Shift adds)", "Klik solid untuk memilih (Shift menambah)")),
         ("move", S.T("MOVE", "PINDAH"), S.T("Drag an arrow to move the selection along X, Y or Z (Alt = no snap)", "Seret panah untuk memindah seleksi sepanjang X, Y atau Z (Alt = tanpa snap)")),
         ("rotate", S.T("ROTATE", "PUTAR"), S.T("Drag a ring to rotate the selection in 15° steps (Alt = free)", "Seret cincin untuk memutar seleksi per 15° (Alt = bebas)")),
+        ("scale", S.T("SCALE", "SKALA"), S.T("Drag a handle outwards to scale the selection uniformly in 0.1 steps (Alt = free)", "Seret pegangan keluar untuk menskala seleksi per 0,1 (Alt = bebas)")),
     ];
 
     /// <summary>Viewer body indices of the selected solids.</summary>
@@ -90,6 +91,7 @@
     private void OnGizmo3D(CadGizmoEventArgs e)
     {
         if (e.Mode == "move") S.Engine.Move3D(e.Delta);
+        else if (e.Mode == "scale") S.Engine.Scale3D(e.Factor, e.Pivot);
         else S.Engine.Rotate3D(e.Axis, e.Angle, e.Pivot);
     }
     private string? _toast;

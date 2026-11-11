@@ -249,6 +249,18 @@ public sealed partial class CommandEngine
         Raise();
     }
 
+    /// <summary>Gizmo scale: uniform scale of the selected solids about <paramref name="pivot"/> (default: their centre).</summary>
+    public void Scale3D(double factor, Vec3? pivot = null)
+    {
+        if (_running != null || factor <= 0 || Math.Abs(factor - 1) < 1e-12) return;
+        var ids = SelectedSolidIds;
+        var c = pivot ?? Solid3D.Bounds(Document, ids).Center;
+        var m = Mat4.Translation3(c) * Mat4.Scale(factor) * Mat4.Translation3(-1 * c);
+        int n = Solid3D.Transform(Document, ids, m, "Scale 3D");
+        if (n > 0) Print($"Scaled {n} solid(s) ×{factor:0.###}");
+        Raise();
+    }
+
     // ===================================================================== grips
 
     /// <summary>When idle with a selection, a click on a grip starts a stretch: the next click places it.</summary>

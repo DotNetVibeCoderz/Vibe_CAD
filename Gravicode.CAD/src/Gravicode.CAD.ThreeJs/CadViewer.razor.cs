@@ -8,9 +8,9 @@ namespace Gravicode.CAD.ThreeJs;
 /// the hit point (CAD space) and whether Shift/Ctrl was held.</summary>
 public sealed record CadPickEventArgs(int BodyIndex, Vec3 Point, bool Additive);
 
-/// <summary>A finished gizmo drag: <c>"move"</c> with <see cref="Delta"/>, or <c>"rotate"</c> by <see cref="Angle"/>
-/// radians about <see cref="Axis"/> through <see cref="Pivot"/> (CAD space).</summary>
-public sealed record CadGizmoEventArgs(string Mode, Vec3 Delta, Vec3 Axis, double Angle, Vec3 Pivot);
+/// <summary>A finished gizmo drag: <c>"move"</c> with <see cref="Delta"/>, <c>"rotate"</c> by <see cref="Angle"/>
+/// radians about <see cref="Axis"/>, or <c>"scale"</c> by <see cref="Factor"/> (uniform) — about <see cref="Pivot"/>, CAD space.</summary>
+public sealed record CadGizmoEventArgs(string Mode, Vec3 Delta, Vec3 Axis, double Angle, Vec3 Pivot, double Factor = 1);
 
 /// <summary>
 /// three.js CAD viewer. Give it a <see cref="Model"/> (built in .NET) or a <see cref="Source"/> URL of any
@@ -43,7 +43,7 @@ public partial class CadViewer : ComponentBase
     [Parameter] public bool Selectable { get; set; }
     /// <summary>Body indices drawn as selected (orange glow).</summary>
     [Parameter] public IReadOnlyCollection<int>? Highlighted { get; set; }
-    /// <summary>Gizmo on the highlighted bodies: null (off), "move" or "rotate".</summary>
+    /// <summary>Gizmo on the highlighted bodies: null (off), "move", "rotate" or "scale".</summary>
     [Parameter] public string? GizmoMode { get; set; }
     /// <summary>Move-gizmo step in model units (0 = free); rotations snap to 15°. Alt drags freely.</summary>
     [Parameter] public double GizmoSnap { get; set; }
@@ -62,8 +62,8 @@ public partial class CadViewer : ComponentBase
         OnPick.InvokeAsync(new CadPickEventArgs(body, new Vec3(x, y, z), additive));
 
     [JSInvokable]
-    public Task OnGizmoFromJs(string mode, double dx, double dy, double dz, double ax, double ay, double az, double angle, double px, double py, double pz) =>
-        OnGizmo.InvokeAsync(new CadGizmoEventArgs(mode, new Vec3(dx, dy, dz), new Vec3(ax, ay, az), angle, new Vec3(px, py, pz)));
+    public Task OnGizmoFromJs(string mode, double dx, double dy, double dz, double ax, double ay, double az, double angle, double px, double py, double pz, double factor) =>
+        OnGizmo.InvokeAsync(new CadGizmoEventArgs(mode, new Vec3(dx, dy, dz), new Vec3(ax, ay, az), angle, new Vec3(px, py, pz), factor));
 
     private async Task PushInteractionAsync(bool force = false)
     {

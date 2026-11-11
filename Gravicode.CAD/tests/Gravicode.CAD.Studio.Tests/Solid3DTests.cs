@@ -88,6 +88,22 @@ public class Solid3DTests
     }
 
     [Fact]
+    public void Scale_about_the_centre_keeps_the_centre()
+    {
+        var (doc, e) = TwoBoxes();
+        e.Selection.Add(doc.Solids[0].Id);
+        var c0 = doc.Solids[0].Mesh.Bounds.Center; double v0 = doc.Solids[0].Mesh.Volume;
+        e.Scale3D(2);
+        Assert.Equal(v0 * 8, doc.Solids[0].Mesh.Volume, 3);
+        Assert.True(c0.ApproxEquals(doc.Solids[0].Mesh.Bounds.Center, 1e-9));
+        e.Scale3D(-1);                                                  // ignored
+        Assert.Equal(v0 * 8, doc.Solids[0].Mesh.Volume, 3);
+        e.Selection.Add(doc.Solids[1].Id);
+        e.RunScript("3DSCALE 0.5");
+        Assert.Equal(60, doc.Solids[1].Mesh.Bounds.Size.Z, 6);
+    }
+
+    [Fact]
     public void Viewer_order_skips_empty_and_hidden_solids()
     {
         var (doc, _) = TwoBoxes();
