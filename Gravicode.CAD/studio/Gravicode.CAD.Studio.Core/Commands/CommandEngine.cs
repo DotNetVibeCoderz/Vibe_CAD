@@ -300,15 +300,16 @@ public sealed partial class CommandEngine
                 }
                 CurrentPrompt = _running.Current;
             Dispatch:
+                if (CurrentPrompt is null) break;
                 // Selection prompts are satisfied immediately by a pick-first selection.
-                if (CurrentPrompt.Kind == PromptKind.Select && Selection.Count > 0 && _queued.Count == 0)
+                if (CurrentPrompt is { Kind: PromptKind.Select } && Selection.Count > 0 && _queued.Count == 0)
                 {
                     _ctx!.Input = new Input.EndInput();
                     continue;
                 }
                 if (_queued.Count == 0) break;
                 var tok = _queued.First!.Value; _queued.RemoveFirst();
-                if (CurrentPrompt.Kind == PromptKind.Select)
+                if (CurrentPrompt is { Kind: PromptKind.Select })
                 {
                     // scripts select with ALL, L/LAST (last created), P (previous); ";" (Enter) ends the selection.
                     bool ended = tok.Length == 0;

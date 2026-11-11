@@ -442,7 +442,7 @@ public partial class MainWindow : Window
                 b.Click += (_, _) => { _engine.Submit(k); CmdBox.Focus(); };
                 Keywords.Children.Add(b);
             }
-        CmdBox.Watermark = _engine.IsBusy ? "" : T("Type a command — LINE, CIRCLE, EXTRUDE, BOX, HELP…", "Ketik perintah — LINE, CIRCLE, EXTRUDE, BOX, HELP…");
+        CmdBox.PlaceholderText = _engine.IsBusy ? "" : T("Type a command — LINE, CIRCLE, EXTRUDE, BOX, HELP…", "Ketik perintah — LINE, CIRCLE, EXTRUDE, BOX, HELP…");
 
         int count = _engine.History.Count;
         string last = count > 0 ? _engine.History[^1] : "";
