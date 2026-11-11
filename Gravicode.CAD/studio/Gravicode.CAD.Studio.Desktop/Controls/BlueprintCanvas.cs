@@ -40,7 +40,7 @@ public sealed class BlueprintCanvas : Control
     private Size _lastSize;
     private int _shownVersion = -1, _shownSelection = -1;
     private StudioDocument? _shownDoc;
-    private bool _space;
+    private bool _space, _zoomPending;
 
     public CommandEngine? Engine { get; set; }
     public event Action<SnapResult>? CursorMoved;
@@ -68,22 +68,27 @@ public sealed class BlueprintCanvas : Control
         InvalidateVisual();
     }
 
-    public void ZoomExtents()
+    /// <summary>Fits the drawing on the next render, when the control's final size is known.</summary>
+    public void ZoomExtents() { _zoomPending = true; InvalidateVisual(); }
+
+    private void ApplyZoomExtents(bool invalidate = true)
     {
+        _zoomPending = false;
         if (Engine is null) return;
         var bb = Engine.Document.Bounds;
-        if (bb.IsEmpty) ZoomTo(-50, -50, 250, 200);
-        else ZoomTo(bb.Min.X, bb.Min.Y, bb.Max.X, bb.Max.Y);
+        if (bb.IsEmpty) ZoomTo(-50, -50, 250, 200, invalidate);
+        else ZoomTo(bb.Min.X, bb.Min.Y, bb.Max.X, bb.Max.Y, invalidate);
     }
 
-    private void ZoomTo(double minX, double minY, double maxX, double maxY)
+    /// <param name="invalidate">False when called from <see cref="Render"/> (Avalonia forbids invalidating mid-render).</param>
+    private void ZoomTo(double minX, double minY, double maxX, double maxY, bool invalidate = true)
     {
         _fit = [minX, minY, maxX, maxY];
         double w = Math.Max(1, Bounds.Width - Ruler), h = Math.Max(1, Bounds.Height - Ruler);
         double sx = Math.Max(maxX - minX, 1e-6), sy = Math.Max(maxY - minY, 1e-6);
         _scale = Math.Clamp(Math.Min(w / sx, h / sy) * 0.88, 1e-5, 1e5);
         _cx = (minX + maxX) / 2; _cy = (minY + maxY) / 2;
-        InvalidateVisual();
+        if (invalidate) InvalidateVisual();
     }
 
     private Point ToScreen(double x, double y) => new(Ruler + (Bounds.Width - Ruler) / 2 + (x - _cx) * _scale, Ruler + (Bounds.Height - Ruler) / 2 - (y - _cy) * _scale);
@@ -182,10 +187,11 @@ public sealed class BlueprintCanvas : Control
     {
         double W = Bounds.Width, H = Bounds.Height;
         if (W < 2 || H < 2) return;
-        if (Bounds.Size != _lastSize)
+        if (_zoomPending) { _lastSize = Bounds.Size; ApplyZoomExtents(invalidate: false); }
+        else if (Bounds.Size != _lastSize)
         {
             _lastSize = Bounds.Size;
-            if (_fit is { } f) ZoomTo(f[0], f[1], f[2], f[3]);
+            if (_fit is { } f) ZoomTo(f[0], f[1], f[2], f[3], invalidate: false);
         }
 
         var bg = new RadialGradientBrush
