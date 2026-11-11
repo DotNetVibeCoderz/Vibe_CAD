@@ -33,6 +33,12 @@ Legend: ✅ done · 🚧 in progress · ⏳ planned (see [PLAN.md](PLAN.md))
 | Gallery — Avalonia (ThreeNet GPU, software fallback) | ✅ |
 | Docs EN/ID (9 topics), README EN/ID, screenshots, NuGet icon | ✅ |
 | CI (GitHub Actions): native matrix → build/test → pack → NuGet on tag | ✅ |
+| **Gravicode CAD Studio** — Studio.Core (document + undo, command engine, ~50 commands, `.gcproj`, catalog) | ✅ 10 tests |
+| Studio Web (Blazor Server, blueprint canvas, three.js 3D) | ✅ |
+| Studio Desktop (Avalonia, `BlueprintCanvas`, ThreeNet GPU 3D + software fallback) | ✅ |
+| Studio catalog: 8 templates + 18 samples across 17 industries (Blender-made game props) | ✅ |
+| Studio release workflow: Windows setup + zip, Linux .deb + tar.gz, macOS .dmg + .app.zip, web zips | ✅ |
 
 ## Log
+- 2026-11-11 — Gravicode CAD Studio (web + desktop) added with docs, screenshots and the `gravicode-cad-studio-v*` release workflow. Fixed in ThreeNet 0.12.1 while embedding it: stale GPU buffers on recycled ids, FXC → DXC on Windows (first frame 16.6 s → 1 s), UI-friendly render loop. `CadScene` now fits near/far planes to the model and uses linear background colours.
 - 2026-11-11 — All modules implemented; Rust engine wired; live Claude text-to-CAD verified; galleries screenshotted; moved into the Vibe_CAD monorepo with CI.

@@ -232,7 +232,7 @@ public static class SoftwareRenderer
                 {
                     var pa = Project(a); var pc = Project(c);
                     if (!cam.Orthographic && (pa.Z < near || pc.Z < near)) continue;
-                    DrawLine(img, pa, pc, depth, W, H, edgeCol, thick, cam.Distance * 2e-3 + bb.Diagonal * 1e-3);
+                    DrawLine(img, pa, pc, depth, W, H, edgeCol, thick, cam.Distance * 1.5e-3 + bb.Diagonal * 5e-4);
                 }
             }
         }
@@ -294,7 +294,7 @@ public static class SoftwareRenderer
                     double d = Math.Sqrt((px + 0.5 - x) * (px + 0.5 - x) + (py + 0.5 - y) * (py + 0.5 - y));
                     double cov = Math.Clamp(thick / 2 + 0.5 - d, 0, 1);
                     if (cov <= 0) continue;
-                    if (z > depth[py * W + px] + bias * Math.Max(1, z * 0.01)) continue;
+                    if (z > depth[py * W + px] + bias) continue;
                     var under = img.Get(px, py);
                     img.Set(px, py, CadColor.Lerp(under, col, cov * 0.85) with { A = Math.Max(under.A, cov) });
                 }

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <RootNamespace>Gravicode.CAD.Studio.Web</RootNamespace>
+    <AssemblyName>GravicodeCadStudioWeb</AssemblyName>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Gravicode.CAD.Studio.Core\Gravicode.CAD.Studio.Core.csproj" />
+    <ProjectReference Include="..\..\src\Gravicode.CAD.ThreeJs\Gravicode.CAD.ThreeJs.csproj" />
+  </ItemGroup>
+</Project>

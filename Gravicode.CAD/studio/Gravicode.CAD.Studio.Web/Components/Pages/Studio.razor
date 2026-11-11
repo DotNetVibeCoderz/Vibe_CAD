@@ -1,0 +1,148 @@
+@page "/studio"
+@implements IDisposable
+@inject StudioSession S
+@inject NavigationManager Nav
+
+<PageTitle>@S.Document.Name — Gravicode CAD Studio</PageTitle>
+
+<div class="studio" data-view="@S.ViewMode">
+    <RibbonBar OnCommand="RunAsync" />
+
+    <BrowserPanel />
+
+    <main class="viewport" aria-label="@S.T("Model space", "Ruang model")">
+        @if (S.ViewMode != "3d")
+        {
+            <section class="viewport__pane viewport__pane--2d">
+                <span class="pane-tag">@S.T("TOP · MODEL", "ATAS · MODEL")</span>
+                <Canvas2D @ref="_canvas" OnAppAction="RunAsync" />
+            </section>
+        }
+        @if (S.ViewMode != "2d")
+        {
+            <section class="viewport__pane viewport__pane--3d">
+                <span class="pane-tag">3D · @S.Document.Solids.Count @S.T("SOLIDS", "SOLID")</span>
+                @if (S.Document.Solids.Count == 0)
+                {
+                    <div class="empty3d">
+                        <p>@S.T("Nothing to show in 3D yet.", "Belum ada yang tampil di 3D.")</p>
+                        <p class="muted">@S.T("Draw a closed shape and EXTRUDE it, or start with BOX.", "Gambar bentuk tertutup lalu EXTRUDE, atau mulai dengan BOX.")</p>
+                        <button type="button" class="btn" @onclick='() => RunAsync("BOX")'>BOX</button>
+                    </div>
+                }
+                else
+                {
+                    <CadViewer Model="Model3D" Height="100%" Theme="dark" ShowGrid="true" />
+                }
+            </section>
+        }
+    </main>
+
+    <PropertiesPanel />
+
+    <CommandLine />
+    <StatusBar />
+
+    <InputFile id="open-file" class="visually-hidden" OnChange="OpenAsync" accept="@Accept" />
+    @if (_toast is not null)
+    {
+        <div class="toast" role="status">@_toast</div>
+    }
+</div>
+
+@code {
+    private Canvas2D? _canvas;
+    private CadModel? _model;
+    private (StudioDocument?, int) _modelKey;
+    private string? _toast;
+    private CancellationTokenSource? _toastCts;
+
+    private static readonly string Accept = string.Join(",", ProjectFile.ImportExtensions.Select(e => "." + e).Append(".gcproj"));
+
+    private CadModel Model3D
+    {
+        get
+        {
+            var key = (S.Document, S.Document.Version);
+            if (_model is null || key != _modelKey)
+            {
+                _model = S.Document.ToCadModel(includeDrawing: false);
+                _modelKey = key;
+            }
+            return _model;
+        }
+    }
+
+    protected override void OnInitialized() => S.Changed += OnChanged;
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    private async Task RunAsync(string command)
+    {
+        if (!command.StartsWith("app:")) { S.Engine.Submit(command); return; }
+        var action = command[4..];
+        switch (action)
+        {
+            case "view-2d": case "view-3d": case "view-split":
+                S.ViewMode = action[5..]; S.Notify(); break;
+            case "new":
+                Nav.NavigateTo(""); break;
+            case "open":
+                await JS.InvokeVoidAsync("eval", "document.getElementById('open-file').click()"); break;
+            case "save":
+                await DownloadAsync(FileBase() + ".gcproj", ProjectFile.Save(S.Document), "application/octet-stream");
+                S.Document.IsDirty = false; S.Notify();
+                Toast(S.T("Project saved to your downloads.", "Proyek disimpan ke folder unduhan.")); break;
+            default:
+                if (action.StartsWith("export:"))
+                {
+                    var ext = action[7..];
+                    try
+                    {
+                        var bytes = await Task.Run(() => ProjectFile.Export(S.Document, ext));
+                        await DownloadAsync($"{FileBase()}.{ext}", bytes, ext == "png" ? "image/png" : "application/octet-stream");
+                        Toast($"{S.T("Exported", "Diekspor")} {ext.ToUpperInvariant()} · {bytes.Length / 1024.0:N0} KB");
+                    }
+                    catch (Exception ex) { Toast($"{S.T("Export failed", "Ekspor gagal")}: {ex.Message}"); }
+                }
+                break;
+        }
+    }
+
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    private string FileBase() => string.Concat((S.Document.Name ?? "drawing").Select(c => char.IsLetterOrDigit(c) || c is '-' or '_' ? c : '-')).Trim('-');
+
+    private async Task DownloadAsync(string name, byte[] bytes, string mime)
+    {
+        if (_canvas is not null) await _canvas.DownloadAsync(name, bytes, mime);
+        else
+        {
+            var module = await JS.InvokeAsync<IJSObjectReference>("import", "./studioCanvas.js");
+            await module.InvokeVoidAsync("download", name, bytes, mime);
+        }
+    }
+
+    private async Task OpenAsync(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            using var ms = new MemoryStream();
+            await e.File.OpenReadStream(256L * 1024 * 1024).CopyToAsync(ms);
+            var doc = await Task.Run(() => ProjectFile.Open(e.File.Name, ms.ToArray()));
+            S.Load(doc, e.File.Name);
+            Toast($"{S.T("Opened", "Dibuka")} {e.File.Name}");
+        }
+        catch (Exception ex) { Toast($"{S.T("Could not open", "Tidak dapat membuka")} {e.File.Name}: {ex.Message}"); }
+    }
+
+    private async void Toast(string text)
+    {
+        _toastCts?.Cancel();
+        var cts = _toastCts = new CancellationTokenSource();
+        _toast = text; await InvokeAsync(StateHasChanged);
+        try { await Task.Delay(3200, cts.Token); _toast = null; await InvokeAsync(StateHasChanged); } catch (TaskCanceledException) { }
+    }
+
+    public void Dispose() { S.Changed -= OnChanged; _toastCts?.Cancel(); }
+}

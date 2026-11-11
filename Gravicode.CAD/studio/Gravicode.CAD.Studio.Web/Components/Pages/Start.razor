@@ -1,0 +1,145 @@
+@page "/"
+@inject StudioSession S
+@inject NavigationManager Nav
+
+<PageTitle>Gravicode CAD Studio</PageTitle>
+
+<div class="start">
+    <header class="start__bar">
+        <span class="brand"><img src="icon.png" alt="" width="26" height="26" /><span class="brand__name">Gravicode</span><span class="brand__app">CAD Studio</span></span>
+        <span class="start__ver">v@(typeof(GravicodeCad).Assembly.GetName().Version?.ToString(3)) · @S.T("web edition", "edisi web")</span>
+        <div class="lang" role="group" aria-label="Language">
+            <button type="button" class="@(S.Indonesian ? "" : "on")" @onclick="() => S.Indonesian = false">EN</button>
+            <button type="button" class="@(S.Indonesian ? "on" : "")" @onclick="() => S.Indonesian = true">ID</button>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="hero__copy">
+            <p class="eyebrow">@S.T("2D drafting · 3D solids · CAD formats", "Drafting 2D · Solid 3D · Format CAD")</p>
+            <h1>@S.T("Type a command.", "Ketik perintah.")<br /><span>@S.T("Build the part.", "Bangun komponennya.")</span></h1>
+            <p class="hero__lede">@S.T(
+                "A command-line CAD studio in your browser: draw with LINE, CIRCLE and PLINE, extrude to solids, cut holes with SUBTRACT, then export STEP, STL, 3MF, DXF or PDF.",
+                "Studio CAD berbasis baris perintah di browser: gambar dengan LINE, CIRCLE dan PLINE, extrude menjadi solid, buat lubang dengan SUBTRACT, lalu ekspor STEP, STL, 3MF, DXF atau PDF.")</p>
+            <div class="hero__actions">
+                <button type="button" class="btn btn--primary" @onclick='() => Open(StudioCatalog.Blank())'>@S.T("New blank drawing", "Gambar kosong baru")</button>
+                <label class="btn">
+                    @S.T("Open a file…", "Buka file…")
+                    <InputFile class="visually-hidden" OnChange="OpenFileAsync" accept="@Accept" />
+                </label>
+                @if (S.Document.Entities.Count + S.Document.Solids.Count > 0)
+                {
+                    <a class="btn btn--ghost" href="studio">@S.T("Back to", "Kembali ke") “@S.Document.Name”</a>
+                }
+            </div>
+            @if (_error is not null) { <p class="error" role="alert">@_error</p> }
+        </div>
+        <div class="hero__tape" aria-hidden="true">
+            <div class="tape-sheet">
+                <img src="thumbs/gearbox.png" alt="" />
+                <span class="cross" style="left:62%;top:44%"></span>
+            </div>
+            <ol class="tape">
+                <li><b>Command:</b> CIRCLE 0,0 40</li>
+                <li><b>Command:</b> EXTRUDE L ; 25</li>
+                <li><b>Command:</b> GEAR 0,0 24 2 18</li>
+                <li class="out">  Gear: 24 teeth, module 2, pitch Ø48</li>
+                <li><b>Command:</b> SUBTRACT <span class="chip">ALL</span></li>
+                <li class="now"><b>Command:</b> <span class="caret"></span></li>
+            </ol>
+        </div>
+    </section>
+
+    <section class="shelf" aria-labelledby="tpl-h">
+        <div class="shelf__head">
+            <h2 id="tpl-h">@S.T("Start from a template", "Mulai dari template")</h2>
+            <p>@S.T("Sheets, layers, units and grid set up for the job.", "Lembar, layer, satuan dan grid sudah disiapkan.")</p>
+        </div>
+        <div class="cards cards--tpl">
+            @foreach (var t in StudioCatalog.Templates)
+            {
+                <button type="button" class="card" @onclick="() => Open(t)">
+                    <img src="thumbs/@(t.Id).png" alt="" loading="lazy" />
+                    <span class="card__cat">@t.Category</span>
+                    <span class="card__title">@t.Title</span>
+                    <span class="card__sum">@(S.Indonesian ? t.SummaryId : t.Summary)</span>
+                </button>
+            }
+        </div>
+    </section>
+
+    <section class="shelf" aria-labelledby="smp-h">
+        <div class="shelf__head">
+            <h2 id="smp-h">@S.T("Open a sample", "Buka contoh")</h2>
+            <p>@StudioCatalog.Samples.Count @S.T("finished models across", "model jadi dari") @SampleCategories.Count @S.T("industries — every one is editable.", "industri — semuanya bisa diedit.")</p>
+        </div>
+        <div class="chips" role="group" aria-label="@S.T("Filter by industry", "Filter industri")">
+            <button type="button" class="@(_cat is null ? "on" : "")" @onclick="() => _cat = null">@S.T("All", "Semua")</button>
+            @foreach (var c in SampleCategories)
+            {
+                <button type="button" class="@(_cat == c ? "on" : "")" @onclick="() => _cat = c">@c</button>
+            }
+        </div>
+        <div class="cards">
+            @foreach (var s in StudioCatalog.Samples.Where(x => _cat is null || x.Category == _cat))
+            {
+                <button type="button" class="card" @onclick="() => Open(s)">
+                    <img src="thumbs/@(s.Id).png" alt="" loading="lazy" />
+                    <span class="card__cat">@s.Category</span>
+                    <span class="card__title">@s.Title</span>
+                    <span class="card__sum">@(S.Indonesian ? s.SummaryId : s.Summary)</span>
+                </button>
+            }
+        </div>
+    </section>
+
+    <footer class="start__foot">
+        <span>@S.T("Built on the open-source Gravicode.CAD library for .NET.", "Dibangun di atas pustaka open-source Gravicode.CAD untuk .NET.")</span>
+        <span>@GravicodeCad.CreditsId</span>
+    </footer>
+
+    @if (_loading is not null)
+    {
+        <div class="loading" role="status"><span class="spinner"></span>@S.T("Building", "Membangun") @_loading…</div>
+    }
+</div>
+
+@code {
+    private string? _cat, _error, _loading;
+    private static readonly string Accept = string.Join(",", ProjectFile.ImportExtensions.Select(e => "." + e).Append(".gcproj"));
+    private static readonly List<string> SampleCategories = StudioCatalog.Categories.Where(c => StudioCatalog.Samples.Any(s => s.Category == c)).ToList();
+
+    private async Task Open(CatalogItem item)
+    {
+        _loading = item.Title; StateHasChanged();
+        try
+        {
+            var doc = await Task.Run(item.Create);
+            Open(doc);
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _loading = null; }
+    }
+
+    private void Open(StudioDocument doc)
+    {
+        S.Load(doc);
+        Nav.NavigateTo("studio");
+    }
+
+    private async Task OpenFileAsync(InputFileChangeEventArgs e)
+    {
+        _error = null;
+        try
+        {
+            _loading = e.File.Name;
+            using var ms = new MemoryStream();
+            await e.File.OpenReadStream(256L * 1024 * 1024).CopyToAsync(ms);
+            var doc = await Task.Run(() => ProjectFile.Open(e.File.Name, ms.ToArray()));
+            S.Load(doc, e.File.Name);
+            Nav.NavigateTo("studio");
+        }
+        catch (Exception ex) { _error = $"{S.T("Could not open", "Tidak dapat membuka")} {e.File.Name}: {ex.Message}"; }
+        finally { _loading = null; }
+    }
+}

@@ -16,6 +16,12 @@ Status of each item is tracked in [Progress.md](Progress.md).
 - FEM (truss, plane stress, heat), CAM (contour, pocket, drill, FDM slicer, G-code)
 - AI-CAD: text-to-part with repair loop (Claude / OpenAI-compatible / offline)
 - `gcad` CLI, `dotnet new` templates, Blazor + Avalonia galleries, bilingual docs, CI → NuGet
+- Gravicode CAD Studio (web + desktop CAD designer) with installers on GitHub releases
+
+### Studio next
+- Grips (drag vertices), TRIM/EXTEND/FILLET/CHAMFER, hatch, blocks, paper-space layouts and plotting
+- Picking and gizmos in the 3D pane; sketch-on-face; parametric history for solids
+- Signed/notarised installers; auto-update
 
 ## v1.1 — Exact solids
 

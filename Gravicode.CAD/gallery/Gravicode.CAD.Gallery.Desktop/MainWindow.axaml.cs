@@ -92,6 +92,8 @@ public partial class MainWindow : Window
         _scene.SetModel(model);
         var (center, radius) = _scene.Frame();
         _orbit.Target = center;
+        _orbit.MinDistance = radius * 0.05f;
+        _orbit.MaxDistance = radius * 30f;
         _orbit.Distance = radius / MathF.Sin(17.5f * MathF.PI / 180f) * 1.1f;
         _orbit.Yaw = -0.6f; _orbit.Pitch = 0.45f;
         Status.Text = $"{model.TriangleCount:N0} triangles · {status}";

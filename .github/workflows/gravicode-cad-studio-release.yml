@@ -1,0 +1,175 @@
+# Gravicode CAD Studio — builds installers for every platform and attaches them to a GitHub Release.
+#   Release:  git tag gravicode-cad-studio-v1.0.0 && git push origin gravicode-cad-studio-v1.0.0
+#   Dry run:  Actions → Gravicode CAD Studio release → Run workflow (artifacts only, no release)
+#
+# Desktop (Avalonia):  Windows setup.exe + zip, Linux .deb + tar.gz, macOS .dmg + zipped .app (Apple silicon)
+# Web (Blazor Server): self-contained zips for Windows, Linux and macOS with a launcher that opens the browser
+name: Gravicode CAD Studio release
+
+on:
+  push:
+    tags: ["gravicode-cad-studio-v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version for the artifacts (defaults to 0.0.0-dev)"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  native:
+    name: Rust engine (${{ matrix.rid }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, rid: win-x64,   file: gravicode_cad_engine.dll }
+          - { os: ubuntu-latest,  rid: linux-x64, file: libgravicode_cad_engine.so }
+          - { os: macos-latest,   rid: osx-arm64, file: libgravicode_cad_engine.dylib }
+    defaults:
+      run:
+        working-directory: Gravicode.CAD/native/gravicode-cad-engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: Gravicode.CAD/native/gravicode-cad-engine
+      - run: cargo build --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.rid }}
+          path: Gravicode.CAD/native/gravicode-cad-engine/target/release/${{ matrix.file }}
+          if-no-files-found: error
+
+  package:
+    name: Package (${{ matrix.rid }})
+    needs: native
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, rid: win-x64 }
+          - { os: ubuntu-latest,  rid: linux-x64 }
+          - { os: macos-latest,   rid: osx-arm64 }
+    defaults:
+      run:
+        working-directory: Gravicode.CAD
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: Gravicode.CAD/global.json
+
+      - name: Resolve version
+        id: version
+        run: |
+          v="${{ inputs.version }}"
+          if [ -z "$v" ] && [ "${{ github.ref_type }}" = "tag" ]; then v="${GITHUB_REF_NAME#gravicode-cad-studio-v}"; fi
+          if [ -z "$v" ]; then v="0.0.0-dev"; fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "Version: $v"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: native-${{ matrix.rid }}
+          path: Gravicode.CAD/src/Gravicode.CAD.Native/runtimes/${{ matrix.rid }}/native
+
+      - name: Test the studio core
+        run: dotnet test tests/Gravicode.CAD.Studio.Tests -c Release
+
+      - name: Publish desktop
+        run: >
+          dotnet publish studio/Gravicode.CAD.Studio.Desktop/Gravicode.CAD.Studio.Desktop.csproj -c Release -r ${{ matrix.rid }}
+          --self-contained -p:Version=${{ steps.version.outputs.version }} -p:DebugType=none -o out/desktop
+
+      - name: Publish web
+        run: >
+          dotnet publish studio/Gravicode.CAD.Studio.Web/Gravicode.CAD.Studio.Web.csproj -c Release -r ${{ matrix.rid }}
+          --self-contained -p:Version=${{ steps.version.outputs.version }} -p:DebugType=none -o out/web
+
+      - name: Web launchers
+        run: |
+          printf '@echo off\r\ncd /d "%%~dp0"\r\necho Gravicode CAD Studio (web) on http://localhost:5190 - close this window to stop.\r\nGravicodeCadStudioWeb.exe --urls http://localhost:5190 --open\r\n' > out/web/start-studio.cmd
+          printf '#!/usr/bin/env sh\ncd "$(dirname "$0")"\necho "Gravicode CAD Studio (web) on http://localhost:5190 - Ctrl+C to stop."\n./GravicodeCadStudioWeb --urls http://localhost:5190 --open\n' > out/web/start-studio.sh
+          chmod +x out/web/start-studio.sh out/web/GravicodeCadStudioWeb 2>/dev/null || true
+          cp ../LICENSE out/web/ 2>/dev/null || true
+          cp ../LICENSE out/desktop/ 2>/dev/null || true
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $v = "${{ steps.version.outputs.version }}"
+          New-Item -ItemType Directory -Force out/release | Out-Null
+          Compress-Archive -Path out/desktop/* -DestinationPath "out/release/GravicodeCadStudio-$v-win-x64.zip"
+          Compress-Archive -Path out/web/* -DestinationPath "out/release/GravicodeCadStudioWeb-$v-win-x64.zip"
+          choco install innosetup -y --no-progress | Out-Null
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          & $iscc "/DAppVersion=$v" "/DSourceDir=$PWD\out\desktop" "/DOutputDir=$PWD\out\release" studio/installer/GravicodeCadStudio.iss
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Get-ChildItem out/release | Format-Table Name, Length
+
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          v="${{ steps.version.outputs.version }}"
+          bash studio/installer/package-linux.sh out/desktop "$v" out/release
+          (cd out && mv web "gravicode-cad-studio-web-$v" && tar -czf "release/GravicodeCadStudioWeb-$v-linux-x64.tar.gz" "gravicode-cad-studio-web-$v")
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          v="${{ steps.version.outputs.version }}"
+          bash studio/installer/package-macos.sh out/desktop "$v" out/release
+          (cd out && mv web "gravicode-cad-studio-web-$v" && zip -qry "release/GravicodeCadStudioWeb-$v-osx-arm64.zip" "gravicode-cad-studio-web-$v")
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: studio-${{ matrix.rid }}
+          path: Gravicode.CAD/out/release/*
+          if-no-files-found: error
+
+  release:
+    name: GitHub Release
+    needs: package
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: studio-*
+          path: release
+          merge-multiple: true
+      - name: Checksums
+        run: cd release && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Gravicode CAD Studio ${{ github.ref_name }}
+          files: release/*
+          body: |
+            **Gravicode CAD Studio** — command-line driven 2D drafting and 3D solid modelling, built on Gravicode.CAD.
+
+            | Platform | Desktop (Avalonia) | Web (Blazor, runs locally in your browser) |
+            |---|---|---|
+            | Windows x64 | `*-win-x64-setup.exe` (installer) or `*-win-x64.zip` | `GravicodeCadStudioWeb-*-win-x64.zip` → `start-studio.cmd` |
+            | Linux x64 | `gravicode-cad-studio_*_amd64.deb` or `*-linux-x64.tar.gz` | `GravicodeCadStudioWeb-*-linux-x64.tar.gz` → `start-studio.sh` |
+            | macOS (Apple silicon) | `*-osx-arm64.dmg` or `*.app.zip` | `GravicodeCadStudioWeb-*-osx-arm64.zip` → `start-studio.sh` |
+
+            macOS builds are ad-hoc signed, not notarised: right-click the app → **Open** the first time.
+            Windows SmartScreen may warn because the installer is unsigned: **More info → Run anyway**.
+
+            Dibuat oleh Gravicode Studios dipimpin oleh Kang Fadhil.

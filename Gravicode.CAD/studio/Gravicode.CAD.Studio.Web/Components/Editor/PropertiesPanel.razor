@@ -1,0 +1,122 @@
+@inherits SessionComponent
+
+<aside class="panel panel--right" aria-label="@S.T("Properties", "Properti")">
+    @{
+        var ents = S.Document.Entities.Where(e => S.Engine.Selection.Contains(e.Id)).ToList();
+        var sols = S.Document.Solids.Where(s => S.Engine.Selection.Contains(s.Id)).ToList();
+    }
+    <div class="panel__head"><h2>@S.T("Properties", "Properti")</h2><span class="muted">@(ents.Count + sols.Count == 0 ? S.T("No selection", "Tidak ada seleksi") : $"{ents.Count + sols.Count} {S.T("selected", "dipilih")}")</span></div>
+
+    @if (sols.Count == 1 && ents.Count == 0)
+    {
+        var s = sols[0];
+        var p = s.Mesh.Properties; var bb = s.Mesh.Bounds;
+        <dl class="props">
+            <dt>@S.T("Type", "Tipe")</dt><dd>Solid</dd>
+            <dt>@S.T("Name", "Nama")</dt><dd><input value="@s.Name" @onchange="e => ReplaceSolid(s, s with { Name = e.Value?.ToString() ?? s.Name })" /></dd>
+            <dt>Layer</dt><dd>@LayerSelect(s.Layer, v => ReplaceSolid(s, new StudioSolid(s.Id, s.Name, v, s.Mesh, s.Color, s.Metallic, s.Roughness)))</dd>
+            <dt>@S.T("Colour", "Warna")</dt><dd><input type="color" value="@s.Color" @onchange="e => ReplaceSolid(s, new StudioSolid(s.Id, s.Name, s.Layer, s.Mesh, e.Value?.ToString() ?? s.Color, s.Metallic, s.Roughness))" /> <code>@s.Color</code></dd>
+            <dt>@S.T("Metallic", "Metalik")</dt><dd><input type="range" min="0" max="1" step="0.05" value="@s.Metallic" @onchange="e => ReplaceSolid(s, new StudioSolid(s.Id, s.Name, s.Layer, s.Mesh, s.Color, D(e), s.Roughness))" /></dd>
+            <dt>@S.T("Roughness", "Kekasaran")</dt><dd><input type="range" min="0.05" max="1" step="0.05" value="@s.Roughness" @onchange="e => ReplaceSolid(s, new StudioSolid(s.Id, s.Name, s.Layer, s.Mesh, s.Color, s.Metallic, D(e)))" /></dd>
+        </dl>
+        <h3 class="props__sub">@S.T("Mass properties", "Properti massa")</h3>
+        <dl class="props props--num">
+            <dt>Volume</dt><dd>@p.Volume.ToString("N1") @Unit()³</dd>
+            <dt>@S.T("Surface", "Luas")</dt><dd>@p.Area.ToString("N1") @Unit()²</dd>
+            <dt>@S.T("Size", "Ukuran")</dt><dd>@($"{bb.Size.X:0.##} × {bb.Size.Y:0.##} × {bb.Size.Z:0.##}")</dd>
+            <dt>@S.T("Centroid", "Centroid")</dt><dd>@($"{p.Centroid.X:0.##}, {p.Centroid.Y:0.##}, {p.Centroid.Z:0.##}")</dd>
+            <dt>@S.T("Triangles", "Segitiga")</dt><dd>@s.Mesh.TriangleCount.ToString("N0")</dd>
+            <dt>@S.T("Steel", "Baja")</dt><dd>@((p.Volume * 7.85e-3).ToString("N0")) g</dd>
+        </dl>
+    }
+    else if (ents.Count == 1 && sols.Count == 0)
+    {
+        var e = ents[0];
+        <dl class="props">
+            <dt>@S.T("Type", "Tipe")</dt><dd>@e.Geometry.GetType().Name.Replace("Entity", "")</dd>
+            <dt>Layer</dt><dd>@LayerSelect(e.Layer, v => ReplaceEntity(e, e with { Layer = v }))</dd>
+            <dt>@S.T("Colour", "Warna")</dt>
+            <dd><input type="color" value="@(e.Color ?? S.Document.LayerOf(e.Layer).Color)" @onchange="ev => ReplaceEntity(e, e with { Color = ev.Value?.ToString() })" />
+                <button type="button" class="link" @onclick="() => ReplaceEntity(e, e with { Color = null })">ByLayer</button></dd>
+        </dl>
+        <p class="props__desc">@StudioCommands.Describe(e.Geometry)</p>
+        @if (Geometry2D.AsLoop(e.Geometry, 0.01) is { } loop)
+        {
+            <dl class="props props--num">
+                <dt>@S.T("Area", "Luas")</dt><dd>@loop.Area.ToString("N2") @Unit()²</dd>
+                <dt>@S.T("Perimeter", "Keliling")</dt><dd>@loop.Perimeter.ToString("N2") @Unit()</dd>
+            </dl>
+        }
+        @if (e.Geometry is TextEntity t)
+        {
+            <dl class="props"><dt>@S.T("Text", "Teks")</dt><dd><input value="@t.Text" @onchange="ev => ReplaceEntity(e, e with { Geometry = new TextEntity(t.Position, ev.Value?.ToString() ?? t.Text, t.Height) })" /></dd></dl>
+        }
+    }
+    else if (ents.Count + sols.Count > 1)
+    {
+        <p class="props__desc">@ents.Count @S.T("drawing objects", "objek gambar"), @sols.Count @S.T("solids", "solid")</p>
+        <dl class="props"><dt>@S.T("Move to layer", "Pindah ke layer")</dt><dd>@LayerSelect("", MoveAll)</dd></dl>
+        <div class="quick">
+            <button type="button" @onclick='() => S.Engine.Submit("UNION")' disabled="@(sols.Count < 2)">Union</button>
+            <button type="button" @onclick='() => S.Engine.Submit("INTERSECT")' disabled="@(sols.Count < 2)">Intersect</button>
+            <button type="button" @onclick='() => S.Engine.Submit("EXTRUDE")' disabled="@(ents.Count == 0)">Extrude</button>
+            <button type="button" @onclick="S.Engine.DeleteSelection">@S.T("Erase", "Hapus")</button>
+        </div>
+    }
+    else
+    {
+        <dl class="props">
+            <dt>@S.T("Drawing", "Gambar")</dt><dd><input value="@S.Document.Name" @onchange="e => { S.Document.Name = e.Value?.ToString() ?? S.Document.Name; S.Document.Touch(); }" /></dd>
+            <dt>@S.T("Units", "Satuan")</dt>
+            <dd>
+                <select value="@S.Document.Units" @onchange="SetUnits">
+                    @foreach (var u in Enum.GetValues<LengthUnit>()) { <option value="@u">@u</option> }
+                </select>
+            </dd>
+            <dt>@S.T("Category", "Kategori")</dt><dd>@(S.Document.Category ?? "—")</dd>
+        </dl>
+        @if (S.Document.Description is { } desc) { <p class="props__desc">@desc</p> }
+        <h3 class="props__sub">@S.T("Getting around", "Cara pakai")</h3>
+        <ul class="tips">
+            <li>@S.T("Type a command anywhere (L, C, REC, EXT, BOX…) and press Enter.", "Ketik perintah di mana saja (L, C, REC, EXT, BOX…) lalu Enter.")</li>
+            <li>@S.T("Coordinates: 10,20 · relative @50,0 · polar @100<45 · or a distance.", "Koordinat: 10,20 · relatif @50,0 · polar @100<45 · atau jarak.")</li>
+            <li>@S.T("Wheel zooms, middle-drag or Space+drag pans, right-click = Enter.", "Roda untuk zoom, seret tengah atau Spasi+seret untuk geser, klik kanan = Enter.")</li>
+            <li>@S.T("Drag left→right for window, right→left for crossing selection.", "Seret kiri→kanan untuk window, kanan→kiri untuk seleksi crossing.")</li>
+        </ul>
+    }
+</aside>
+
+@code {
+    private string Unit() => S.Document.Units.Symbol();
+    private static double D(ChangeEventArgs e) => double.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : 0;
+
+    private RenderFragment LayerSelect(string current, Action<string> onChange) => __builder =>
+    {
+        <select value="@current" @onchange="e => onChange(e.Value?.ToString() ?? current)">
+            @if (current == "") { <option value="">—</option> }
+            @foreach (var l in S.Document.Layers) { <option value="@l.Name">@l.Name</option> }
+        </select>
+    };
+
+    private void ReplaceSolid(StudioSolid old, StudioSolid updated) =>
+        S.Document.Edit("Properties", d => { int i = d.Solids.FindIndex(x => x.Id == old.Id); if (i >= 0) d.Solids[i] = updated; });
+
+    private void ReplaceEntity(StudioEntity old, StudioEntity updated) =>
+        S.Document.Edit("Properties", d => { int i = d.Entities.FindIndex(x => x.Id == old.Id); if (i >= 0) d.Entities[i] = updated; });
+
+    private void MoveAll(string layer)
+    {
+        if (string.IsNullOrEmpty(layer)) return;
+        var ids = S.Engine.Selection.ToHashSet();
+        S.Document.Edit("Change layer", d =>
+        {
+            for (int i = 0; i < d.Entities.Count; i++) if (ids.Contains(d.Entities[i].Id)) d.Entities[i] = d.Entities[i] with { Layer = layer };
+            for (int i = 0; i < d.Solids.Count; i++) if (ids.Contains(d.Solids[i].Id)) { var s = d.Solids[i]; d.Solids[i] = new StudioSolid(s.Id, s.Name, layer, s.Mesh, s.Color, s.Metallic, s.Roughness); }
+        });
+    }
+
+    private void SetUnits(ChangeEventArgs e)
+    {
+        if (Enum.TryParse<LengthUnit>(e.Value?.ToString(), out var u)) { S.Document.Units = u; S.Document.Touch(); }
+    }
+}

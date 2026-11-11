@@ -11,5 +11,6 @@
     <ProjectReference Include="..\..\src\Gravicode.CAD.Rendering\Gravicode.CAD.Rendering.csproj" />
     <ProjectReference Include="..\..\src\Gravicode.CAD.Native\Gravicode.CAD.Native.csproj" />
     <ProjectReference Include="..\..\gallery\Gravicode.CAD.Gallery.Samples\Gravicode.CAD.Gallery.Samples.csproj" />
+    <ProjectReference Include="..\..\studio\Gravicode.CAD.Studio.Core\Gravicode.CAD.Studio.Core.csproj" />
   </ItemGroup>
 </Project>

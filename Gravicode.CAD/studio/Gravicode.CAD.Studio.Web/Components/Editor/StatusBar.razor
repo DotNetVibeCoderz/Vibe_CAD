@@ -1,0 +1,45 @@
+@implements IDisposable
+@inject StudioSession S
+
+<footer class="statusbar">
+    <span class="coords" title="Cursor (snapped)">@($"{_snap.Point.X:0.###}, {_snap.Point.Y:0.###}") <em>@(_snap.Kind is SnapKind.None ? "" : _snap.Kind.ToString().ToUpperInvariant())</em></span>
+    <span class="toggles">
+        <button type="button" class="@(S.Engine.Settings.GridSnap ? "on" : "")" title="Grid snap (F9)" @onclick="() => Toggle(s => s.GridSnap = !s.GridSnap)">SNAP</button>
+        <button type="button" class="@(S.Engine.Settings.Ortho ? "on" : "")" title="Ortho (F8)" @onclick="() => Toggle(s => s.Ortho = !s.Ortho)">ORTHO</button>
+        <button type="button" class="@(S.Engine.Settings.ObjectSnap ? "on" : "")" title="Object snap (F3)" @onclick="() => Toggle(s => s.ObjectSnap = !s.ObjectSnap)">OSNAP</button>
+        <label title="Grid spacing">GRID <input type="number" min="0.001" step="any" value="@S.Engine.Settings.GridSize" @onchange="SetGrid" /></label>
+    </span>
+    <span class="status-mid">@S.T("Layer", "Layer"): <b>@S.Document.CurrentLayer</b> · @S.T("Colour", "Warna"): <b>@S.Engine.Settings.CurrentColor</b> · @S.Document.Units.Symbol()</span>
+    <span class="status-right">@S.Document.Entities.Count @S.T("objects", "objek") · @S.Document.Solids.Count @S.T("solids", "solid") · @Gravicode.CAD.MeshKernel.Current.Name.Split('(')[0].Trim() · @GravicodeCad.CreditsId</span>
+</footer>
+
+@code {
+    private SnapResult _snap = new(Vec2.Zero, SnapKind.None);
+    private DateTime _last;
+
+    protected override void OnInitialized()
+    {
+        S.CursorMoved += OnCursor;
+        S.Changed += Refresh;
+    }
+
+    private void OnCursor(SnapResult s)
+    {
+        _snap = s;
+        if ((DateTime.UtcNow - _last).TotalMilliseconds < 50) return;   // keep the circuit quiet
+        _last = DateTime.UtcNow;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void Refresh() => InvokeAsync(StateHasChanged);
+
+    private void Toggle(Action<DraftSettings> a) { a(S.Engine.Settings); S.Notify(); }
+
+    private void SetGrid(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var g) && g > 0)
+        { S.Engine.Settings.GridSize = g; S.Notify(); }
+    }
+
+    public void Dispose() { S.CursorMoved -= OnCursor; S.Changed -= Refresh; }
+}

@@ -25,10 +25,16 @@
     <Project Path="src/Gravicode.CAD.Viewer.WinForms/Gravicode.CAD.Viewer.WinForms.csproj" />
     <Project Path="src/Gravicode.CAD.Viewer.Wpf/Gravicode.CAD.Viewer.Wpf.csproj" />
   </Folder>
+  <Folder Name="/studio/">
+    <Project Path="studio/Gravicode.CAD.Studio.Core/Gravicode.CAD.Studio.Core.csproj" />
+    <Project Path="studio/Gravicode.CAD.Studio.Desktop/Gravicode.CAD.Studio.Desktop.csproj" />
+    <Project Path="studio/Gravicode.CAD.Studio.Web/Gravicode.CAD.Studio.Web.csproj" />
+  </Folder>
   <Folder Name="/templates/">
     <Project Path="templates/Gravicode.CAD.Templates/Gravicode.CAD.Templates.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Gravicode.CAD.Studio.Tests/Gravicode.CAD.Studio.Tests.csproj" />
     <Project Path="tests/Gravicode.CAD.Tests/Gravicode.CAD.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">

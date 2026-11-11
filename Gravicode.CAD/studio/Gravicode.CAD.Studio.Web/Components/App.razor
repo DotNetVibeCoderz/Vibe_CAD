@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <title>Gravicode CAD Studio</title>
+    <meta name="description" content="Gravicode CAD Studio — browser-based 2D drafting and 3D solid modelling built on Gravicode.CAD." />
+    <link rel="icon" type="image/png" href="icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="@Assets["studio.css"]" />
+    <link rel="stylesheet" href="@Assets["GravicodeCadStudioWeb.styles.css"]" />
+    <ImportMap />
+    <HeadOutlet @rendermode="InteractiveServer" />
+</head>
+<body>
+    <Routes @rendermode="InteractiveServer" />
+    <div id="blazor-error-ui" data-nosnippet>Connection to the studio server was lost. <a href="." class="reload">Reload</a></div>
+    <script src="_framework/blazor.web.js"></script>
+</body>
+</html>

@@ -89,6 +89,24 @@ dotnet new install Gravicode.CAD.Templates
 dotnet new cad-console -n PartSaya     # juga: cad-webapi cad-blazor cad-wpf cad-winforms cad-avalonia cad-maui
 ```
 
+## Gravicode CAD Studio
+
+Aplikasi desain CAD lengkap di atas pustaka ini — baris perintah ala AutoCAD, ribbon, layer, snap, drafting 2D,
+solid 3D dengan boolean, 8 template dan 18 contoh dari 17 industri. Dua edisi, satu engine:
+
+| Web (Blazor) | Desktop (Avalonia + ThreeNet) |
+|---|---|
+| ![Studio web](docs/images/studio-web-editor.png) | ![Studio desktop](docs/images/studio-desktop-editor.png) |
+| ![Layar awal web](docs/images/studio-web-start.png) | ![Contoh desktop](docs/images/studio-desktop-samples.png) |
+
+```bash
+dotnet run --project studio/Gravicode.CAD.Studio.Web        # http://localhost:5190
+dotnet run --project studio/Gravicode.CAD.Studio.Desktop
+```
+
+Installer (setup Windows, .deb Linux, .dmg macOS, serta zip server web) tersedia di
+[halaman rilis](https://github.com/DotNetVibeCoderz/Vibe_CAD/releases). Panduan: [docs/id/Studio.md](docs/id/Studio.md).
+
 ## Galeri Gravicode.CAD
 
 Delapan belas contoh yang bisa dijalankan — masing-masing menampilkan kode, properti, dan unduhan dalam sembilan format.
@@ -133,6 +151,7 @@ Lihat [docs/id/Architecture.md](docs/id/Architecture.md).
 | [AI](docs/id/AI.md) | [AI](docs/en/AI.md) |
 | [CLI](docs/id/CLI.md) | [CLI](docs/en/CLI.md) |
 | [Template](docs/id/Templates.md) | [Templates](docs/en/Templates.md) |
+| [CAD Studio](docs/id/Studio.md) | [CAD Studio](docs/en/Studio.md) |
 
 Roadmap: [PLAN.md](PLAN.md) · Status: [Progress.md](Progress.md)
 
@@ -141,6 +160,7 @@ Roadmap: [PLAN.md](PLAN.md) · Status: [Progress.md](Progress.md)
 ```bash
 dotnet build Gravicode.CAD.slnx
 dotnet test tests/Gravicode.CAD.Tests
+dotnet test tests/Gravicode.CAD.Studio.Tests
 ./build-native.ps1              # opsional: build ulang mesin Rust (cargo)
 ```
 

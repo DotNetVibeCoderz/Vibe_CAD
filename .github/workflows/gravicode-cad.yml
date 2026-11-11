@@ -113,12 +113,15 @@ jobs:
       - name: Test
         run: dotnet test tests/Gravicode.CAD.Tests -c Release --no-build --logger "trx;LogFileName=results.trx"
 
+      - name: Test the studio
+        run: dotnet test tests/Gravicode.CAD.Studio.Tests -c Release --no-build --logger "trx;LogFileName=studio.trx"
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: Gravicode.CAD/tests/Gravicode.CAD.Tests/TestResults/*.trx
+          path: Gravicode.CAD/tests/*/TestResults/*.trx
 
       - name: Pack
         shell: pwsh

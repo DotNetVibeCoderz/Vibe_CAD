@@ -16,12 +16,16 @@ cd native/gravicode-cad-engine && cargo test --release
 dotnet run -c Release --project tools/Gravicode.CAD.DocGen   # regenerates assets/icon*, docs/images, gallery thumbs
 dotnet run --project gallery/Gravicode.CAD.Gallery.Web       # needs ASPNETCORE_ENVIRONMENT=Development when run without launch profile
 dotnet run --project gallery/Gravicode.CAD.Gallery.Desktop
+dotnet test tests/Gravicode.CAD.Studio.Tests                 # studio command engine / catalog
+dotnet run --project studio/Gravicode.CAD.Studio.Web         # http://localhost:5190 (launch profile sets Development)
+dotnet run --project studio/Gravicode.CAD.Studio.Desktop     # GCAD_STUDIO_DEMO="gearbox|BOX 0,0 50,50 20" scripts it (screenshots)
+dotnet run -c Release --project tools/Gravicode.CAD.DocGen -- . --studio   # studio thumbnails only
 python templates/Gravicode.CAD.Templates/gen_templates.py    # regenerates template content (run from that folder)
 ```
 
 Live LLM test is opt-in: set `GRAVICODE_LIVE_LLM=claude|azure|deepseek|hf` plus `ANTHROPIC_API_KEY` (or `GRAVICODE_KEY_FILE`). Never commit keys.
 
-CI: `.github/workflows/gravicode-cad.yml` at the monorepo root. Pushing a tag `gravicode-cad-vX.Y.Z` builds native libs (win/linux/mac), tests, packs with that version and pushes to nuget.org using the `NUGET_API_KEY` secret.
+CI: `.github/workflows/gravicode-cad.yml` at the monorepo root. Studio installers: `.github/workflows/gravicode-cad-studio-release.yml` on tag `gravicode-cad-studio-vX.Y.Z` (attaches Windows/Linux/macOS installers to a GitHub Release). Pushing a tag `gravicode-cad-vX.Y.Z` builds native libs (win/linux/mac), tests, packs with that version and pushes to nuget.org using the `NUGET_API_KEY` secret.
 
 ## Architecture (big picture)
 
@@ -33,6 +37,8 @@ CI: `.github/workflows/gravicode-cad.yml` at the monorepo root. Pushing a tag `g
 - **Z-up everywhere in CAD space**; glTF and ThreeNet are Y-up (converted at the boundary: glTF root rotation, `CadScene` root node).
 - **Triangulator** vertex order is outer then holes in profile order (STEP import relies on this mapping).
 - Feature edges ignore zero-area slivers (`HalfEdgeMesh.FaceNormals` returns `Vec3.Zero` for them).
+
+- **Studio** (`studio/`): `Studio.Core` holds everything UI-independent — `StudioDocument` (mutate only through `Edit(label, action)` so undo works), `CommandEngine` (commands are iterators yielding `Prompt`s; scripts use `;` for Enter and `L`/`P`/`ALL` selection tokens), `StudioCatalog` (templates/samples), `StudioRibbon`, `DisplayList`. Web and Desktop are thin shells over it and draw the same display list (`studioCanvas.js` / `BlueprintCanvas.cs` mirror each other). ThreeNet scene edits in the desktop must be applied from the `ThreeNetView.Frame` callback.
 
 ## Conventions
 

@@ -35,6 +35,29 @@ foreach (var s in SampleCatalog.All)
     Console.WriteLine($"  {s.Id,-18} {m.TriangleCount,8:N0} tris  {sw.ElapsedMilliseconds,6} ms");
 }
 
+// ---------- Gravicode CAD Studio thumbnails ----------
+if (args.Contains("--studio") || args.Length <= 1)
+{
+    var studioThumbs = new[]
+    {
+        Directory.CreateDirectory(Path.Combine(images.FullName, "studio")).FullName,
+        Directory.CreateDirectory(Path.Combine(root, "studio", "Gravicode.CAD.Studio.Web", "wwwroot", "thumbs")).FullName,
+        Directory.CreateDirectory(Path.Combine(root, "studio", "Gravicode.CAD.Studio.Desktop", "Assets", "thumbs")).FullName,
+    };
+    foreach (var item in Gravicode.CAD.Studio.Catalog.StudioCatalog.Templates.Concat(Gravicode.CAD.Studio.Catalog.StudioCatalog.Samples))
+    {
+        var sw2 = Stopwatch.StartNew();
+        var sdoc = item.Create();
+        var m2 = sdoc.ToCadModel(includeDrawing: sdoc.Solids.Count == 0);
+        var png = sdoc.Solids.Count == 0
+            ? Gravicode.CAD.Studio.UI.BlueprintThumbnail.Render(sdoc).EncodePng()
+            : SoftwareRenderer.Render(m2, new RenderOptions { Width = 640, Height = 400, Camera = new OrbitCamera { Yaw = -35, Pitch = 30 }.Fit(m2.Bounds, 0.95) }).EncodePng();
+        foreach (var dir in studioThumbs) File.WriteAllBytes(Path.Combine(dir, item.Id + ".png"), png);
+        Console.WriteLine($"  studio/{item.Id,-14} {m2.TriangleCount,8:N0} tris  {sw2.ElapsedMilliseconds,6} ms");
+    }
+    if (args.Contains("--studio")) return;
+}
+
 // ---------- hero image ----------
 var hero = new CadModel("Hero");
 void Add(string id, Vec3 offset)

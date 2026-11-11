@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <RootNamespace>Gravicode.CAD.Studio.Desktop</RootNamespace>
+    <AssemblyName>GravicodeCadStudio</AssemblyName>
+    <Product>Gravicode CAD Studio</Product>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <ApplicationIcon>..\..\assets\icon.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Avalonia.Fonts.Inter" />
+    <PackageReference Include="ThreeNet.Avalonia" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Gravicode.CAD.Studio.Core\Gravicode.CAD.Studio.Core.csproj" />
+    <ProjectReference Include="..\..\src\Gravicode.CAD.ThreeNet\Gravicode.CAD.ThreeNet.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="..\..\assets\icon-128.png" Link="Assets\icon.png" />
+    <AvaloniaResource Include="Assets\thumbs\*.png" />
+    <AvaloniaResource Include="Assets\Fonts\*.ttf" />
+  </ItemGroup>
+</Project>

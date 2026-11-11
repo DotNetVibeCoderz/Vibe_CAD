@@ -35,7 +35,8 @@ public sealed class CadScene : IDisposable
         Root = Scene.CreateNode(null!, "GravicodeCAD");
         Root.Rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitX, -MathF.PI / 2); // Z-up -> Y-up
         var env = Scene.Environment;
-        env.Background = light ? new Vector4(0.86f, 0.89f, 0.92f, 1) : new Vector4(0.07f, 0.09f, 0.13f, 1);
+        // ThreeNet treats the background as linear colour: convert from the sRGB values we design with
+        env.Background = light ? Linear(0xE9, 0xED, 0xF1) : Linear(0x11, 0x16, 0x1D);
         Scene.Environment = env;
         Scene.AddLight(Light.Hemisphere(new Vector3(0.75f, 0.82f, 1f), new Vector3(0.22f, 0.2f, 0.18f), 0.9f));
         var key = Scene.AddLight(Light.Directional(new Vector3(1f, 0.97f, 0.92f), 3.2f));
@@ -44,6 +45,12 @@ public sealed class CadScene : IDisposable
         fill.Position = new Vector3(-6, 3, -4); fill.LookAt(Vector3.Zero);
         Camera = Scene.AddCamera(global::ThreeNet.Camera.Perspective(35f * MathF.PI / 180f), new Vector3(0, 2, 6));
         Camera.LookAt(Vector3.Zero);
+    }
+
+    private static Vector4 Linear(int r, int g, int b)
+    {
+        static float L(int c) { double v = c / 255.0; return (float)(v <= 0.04045 ? v / 12.92 : Math.Pow((v + 0.055) / 1.055, 2.4)); }
+        return new Vector4(L(r), L(g), L(b), 1);
     }
 
     /// <summary>Replaces the displayed model.</summary>
@@ -90,6 +97,7 @@ public sealed class CadScene : IDisposable
         }
         Bounds = model.Bounds;
         AddGrid();
+        FitClipPlanes();
     }
 
     private void AddGrid()
@@ -97,12 +105,25 @@ public sealed class CadScene : IDisposable
         if (Bounds.IsEmpty) return;
         double size = Math.Max(Bounds.Size.X, Bounds.Size.Y) * 1.8;
         var g = Scene.CreateGridGeometry((float)size, 18);
-        var m = Scene.CreateMaterial(MaterialOptions.Basic(_light ? new Vector4(0.62f, 0.68f, 0.77f, 1) : new Vector4(0.22f, 0.27f, 0.36f, 1)));
+        var m = Scene.CreateMaterial(MaterialOptions.Basic(_light ? Linear(0xB9, 0xC3, 0xD3) : Linear(0x2A, 0x34, 0x44)));
         _geometries.Add(g); _materials.Add(m);
         // grid geometry lies in ThreeNet's XZ plane (Y-up) — place it at the model's floor
         _grid = Scene.AddMesh(g, m, null!, "grid");
         var c = Bounds.Center;
         _grid.Position = new Vector3((float)c.X, (float)Bounds.Min.Z, (float)-c.Y);
+    }
+
+    /// <summary>
+    /// Sizes the camera's near/far planes to the model: CAD models are usually in millimetres, so the default
+    /// 0.1 – 1000 range clips anything larger than a desk part.
+    /// </summary>
+    private void FitClipPlanes()
+    {
+        if (Bounds.IsEmpty || Camera.Camera is not { } cam) return;
+        float r = (float)Math.Max(Bounds.Diagonal / 2, 1e-3);
+        cam.Near = r * 0.01f;
+        cam.Far = r * 60f;
+        Camera.Camera = cam;
     }
 
     /// <summary>Converts a CAD (Z-up) point to ThreeNet world (Y-up).</summary>

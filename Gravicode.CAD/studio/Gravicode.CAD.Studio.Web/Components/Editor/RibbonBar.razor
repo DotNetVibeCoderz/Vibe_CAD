@@ -1,0 +1,59 @@
+@using Gravicode.CAD.Studio.UI
+@inherits SessionComponent
+
+<header class="ribbon">
+    <div class="ribbon__top">
+        <a class="brand" href="" title="Start screen">
+            <img src="icon.png" alt="" width="22" height="22" />
+            <span class="brand__name">Gravicode</span><span class="brand__app">CAD Studio</span>
+        </a>
+        <nav class="ribbon__tabs" role="tablist" aria-label="Ribbon">
+            @foreach (var (tab, i) in StudioRibbon.Tabs.Select((t, i) => (t, i)))
+            {
+                <button role="tab" type="button" aria-selected="@(i == _tab)" class="@(i == _tab ? "on" : "")" @onclick="() => _tab = i">@S.T(tab.Title, tab.TitleId)</button>
+            }
+        </nav>
+        <div class="ribbon__doc">
+            <span class="doc-name">@S.Document.Name@(S.Document.IsDirty ? " •" : "")</span>
+            <span class="doc-cat">@(S.Document.Category ?? "Drawing")</span>
+        </div>
+        <div class="lang" role="group" aria-label="Language">
+            <button type="button" class="@(S.Indonesian ? "" : "on")" @onclick="() => { S.Indonesian = false; S.Notify(); }">EN</button>
+            <button type="button" class="@(S.Indonesian ? "on" : "")" @onclick="() => { S.Indonesian = true; S.Notify(); }">ID</button>
+        </div>
+    </div>
+    <div class="ribbon__panel" role="tabpanel">
+        @foreach (var group in StudioRibbon.Tabs[_tab].Groups)
+        {
+            <section class="rgroup">
+                <div class="rgroup__buttons">
+                    @foreach (var b in group.Buttons)
+                    {
+                        var active = IsActive(b);
+                        <button type="button" class="rbtn @(b.Large ? "rbtn--lg" : "") @(active ? "rbtn--on" : "")" title="@b.Tooltip" @onclick="() => OnCommand.InvokeAsync(b.Command)">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="@StudioRibbon.Icons.GetValueOrDefault(b.Icon, "")" /></svg>
+                            <span>@b.Label</span>
+                        </button>
+                    }
+                </div>
+                <div class="rgroup__title">@group.Title</div>
+            </section>
+        }
+    </div>
+</header>
+
+@code {
+    private int _tab;
+    [Parameter] public EventCallback<string> OnCommand { get; set; }
+
+    private bool IsActive(RibbonButton b) => b.Command switch
+    {
+        "ORTHO" => S.Engine.Settings.Ortho,
+        "GRID" => S.Engine.Settings.GridSnap,
+        "OSNAP" => S.Engine.Settings.ObjectSnap,
+        "app:view-2d" => S.ViewMode == "2d",
+        "app:view-split" => S.ViewMode == "split",
+        "app:view-3d" => S.ViewMode == "3d",
+        _ => S.Engine.ActiveCommand?.Name == b.Command
+    };
+}

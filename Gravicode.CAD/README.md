@@ -89,6 +89,24 @@ dotnet new install Gravicode.CAD.Templates
 dotnet new cad-console -n MyPart      # also: cad-webapi cad-blazor cad-wpf cad-winforms cad-avalonia cad-maui
 ```
 
+## Gravicode CAD Studio
+
+A full CAD designer built on the library — AutoCAD-style command line, ribbon, layers, snaps, 2D drafting,
+3D solids with booleans, 8 templates and 18 samples from 17 industries. Two editions, one engine:
+
+| Web (Blazor) | Desktop (Avalonia + ThreeNet) |
+|---|---|
+| ![Studio web](docs/images/studio-web-editor.png) | ![Studio desktop](docs/images/studio-desktop-editor.png) |
+| ![Studio web start](docs/images/studio-web-start.png) | ![Studio desktop samples](docs/images/studio-desktop-samples.png) |
+
+```bash
+dotnet run --project studio/Gravicode.CAD.Studio.Web        # http://localhost:5190
+dotnet run --project studio/Gravicode.CAD.Studio.Desktop
+```
+
+Installers (Windows setup, Linux .deb, macOS .dmg, plus web-server zips) are on the
+[releases page](https://github.com/DotNetVibeCoderz/Vibe_CAD/releases). Guide: [docs/en/Studio.md](docs/en/Studio.md).
+
 ## Gravicode.CAD Gallery
 
 Eighteen runnable samples — every one shows its code, its properties and downloads in nine formats.
@@ -133,6 +151,7 @@ See [docs/en/Architecture.md](docs/en/Architecture.md).
 | [AI](docs/en/AI.md) | [AI](docs/id/AI.md) |
 | [CLI](docs/en/CLI.md) | [CLI](docs/id/CLI.md) |
 | [Templates](docs/en/Templates.md) | [Template](docs/id/Templates.md) |
+| [CAD Studio](docs/en/Studio.md) | [CAD Studio](docs/id/Studio.md) |
 
 Roadmap: [PLAN.md](PLAN.md) · Status: [Progress.md](Progress.md)
 
@@ -141,6 +160,7 @@ Roadmap: [PLAN.md](PLAN.md) · Status: [Progress.md](Progress.md)
 ```bash
 dotnet build Gravicode.CAD.slnx
 dotnet test tests/Gravicode.CAD.Tests
+dotnet test tests/Gravicode.CAD.Studio.Tests
 ./build-native.ps1              # optional: rebuild the Rust engine (cargo)
 ```
 

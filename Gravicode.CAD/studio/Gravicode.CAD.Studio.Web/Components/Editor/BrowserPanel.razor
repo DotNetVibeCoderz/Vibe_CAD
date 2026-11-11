@@ -1,0 +1,68 @@
+@inherits SessionComponent
+
+<aside class="panel panel--left" aria-label="@S.T("Layers and objects", "Layer dan objek")">
+    <div class="panel__head">
+        <h2>@S.T("Layers", "Layer")</h2>
+        <button type="button" class="icon-btn" title="@S.T("New layer", "Layer baru")" @onclick="AddLayer">+</button>
+    </div>
+    <ul class="layers">
+        @foreach (var l in S.Document.Layers)
+        {
+            var current = l.Name == S.Document.CurrentLayer;
+            <li class="@(current ? "current" : "")">
+                <button type="button" class="eye @(l.Visible ? "" : "off")" title="@(l.Visible ? S.T("Hide", "Sembunyikan") : S.T("Show", "Tampilkan"))" @onclick="() => Update(l, l with { Visible = !l.Visible })">@(l.Visible ? "◉" : "○")</button>
+                <button type="button" class="lock @(l.Locked ? "on" : "")" title="@(l.Locked ? S.T("Unlock", "Buka kunci") : S.T("Lock", "Kunci"))" @onclick="() => Update(l, l with { Locked = !l.Locked })">@(l.Locked ? "■" : "□")</button>
+                <input type="color" value="@l.Color" title="@S.T("Layer colour", "Warna layer")" @onchange="e => Update(l, l with { Color = e.Value?.ToString() ?? l.Color })" />
+                <button type="button" class="lname" title="@S.T("Make current", "Jadikan aktif")" @onclick="() => SetCurrent(l)">@l.Name</button>
+                <span class="lcount">@Count(l)</span>
+            </li>
+        }
+    </ul>
+
+    <div class="panel__head"><h2>@S.T("Solids", "Solid")</h2><span class="muted">@S.Document.Solids.Count</span></div>
+    <ul class="tree">
+        @foreach (var s in S.Document.Solids.Take(200))
+        {
+            <li class="@(S.Engine.Selection.Contains(s.Id) ? "sel" : "")">
+                <button type="button" @onclick="() => Select(s.Id)"><span class="swatch" style="background:@s.Color"></span>@s.Name</button>
+            </li>
+        }
+        @if (S.Document.Solids.Count == 0)
+        {
+            <li class="empty-hint">@S.T("No solids yet — try BOX, EXTRUDE or the Solid tab.", "Belum ada solid — coba BOX, EXTRUDE atau tab Solid.")</li>
+        }
+    </ul>
+
+    <div class="panel__head"><h2>@S.T("Drawing", "Gambar")</h2><span class="muted">@S.Document.Entities.Count</span></div>
+    <ul class="kinds">
+        @foreach (var g in S.Document.Entities.GroupBy(e => e.Geometry.GetType().Name.Replace("Entity", "")).OrderByDescending(g => g.Count()))
+        {
+            <li><span>@g.Key</span><b>@g.Count()</b></li>
+        }
+    </ul>
+</aside>
+
+@code {
+    private int Count(Layer l) => S.Document.Entities.Count(e => e.Layer == l.Name) + S.Document.Solids.Count(s => s.Layer == l.Name);
+
+    private void Update(Layer old, Layer updated)
+    {
+        S.Document.Edit("Layer", d => { int i = d.Layers.FindIndex(x => x.Name == old.Name); if (i >= 0) d.Layers[i] = updated; });
+    }
+
+    private void SetCurrent(Layer l) { S.Document.CurrentLayer = l.Name; S.Notify(); }
+
+    private void AddLayer()
+    {
+        int n = S.Document.Layers.Count;
+        string[] palette = ["#F6AD55", "#68D391", "#63B3ED", "#F687B3", "#B794F4", "#FC8181", "#4FD1C5"];
+        S.Document.Edit("New layer", d => { var name = $"Layer{n}"; d.Layers.Add(new Layer(name, palette[n % palette.Length])); d.CurrentLayer = name; });
+    }
+
+    private void Select(Guid id)
+    {
+        if (S.Engine.IsBusy && S.Engine.CurrentPrompt?.Kind != PromptKind.Select) return;
+        if (!S.Engine.Selection.Remove(id)) S.Engine.Selection.Add(id);
+        S.Notify();
+    }
+}

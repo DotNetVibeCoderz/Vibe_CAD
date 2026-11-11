@@ -1,0 +1,127 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject StudioSession S
+
+<div class="viewport__surface" @ref="_host"></div>
+
+@code {
+    private ElementReference _host;
+    private IJSObjectReference? _module, _canvas;
+    private DotNetObjectReference<Canvas2D>? _ref;
+    private int _shownVersion = -1;
+    private int _shownSelection = -1;
+    private StudioDocument? _shownDoc;
+    private (bool, double) _grid;
+
+    [Parameter] public EventCallback<string> OnAppAction { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./studioCanvas.js");
+            _ref = DotNetObjectReference.Create(this);
+            _canvas = await _module.InvokeAsync<IJSObjectReference>("createCanvas", _host, _ref);
+            S.ViewRequested += OnViewRequested;
+            S.Changed += OnSessionChanged;
+            await PushSceneAsync(force: true);
+            await ZoomExtentsAsync();
+        }
+        else await PushSceneAsync();
+    }
+
+    private void OnSessionChanged() => _ = InvokeAsync(() => PushSceneAsync());
+
+    private void OnViewRequested(string v)
+    {
+        if (v == "zoom-extents") _ = InvokeAsync(ZoomExtentsAsync);
+    }
+
+    private int SelectionHash => S.Engine.Selection.Aggregate(S.Engine.Selection.Count, (h, g) => h ^ g.GetHashCode());
+
+    public async Task PushSceneAsync(bool force = false)
+    {
+        if (_canvas is null) return;
+        var grid = (S.Engine.Settings.ShowGrid, S.Engine.Settings.GridSize);
+        if (force || grid != _grid) { _grid = grid; await _canvas.InvokeVoidAsync("setGrid", grid.ShowGrid, grid.GridSize); }
+        var doc = S.Document;
+        int sel = SelectionHash;
+        if (!force && doc == _shownDoc && doc.Version == _shownVersion && sel == _shownSelection) return;
+        _shownDoc = doc; _shownVersion = doc.Version; _shownSelection = sel;
+        var items = Gravicode.CAD.Studio.UI.DisplayList.Build(doc, S.Engine.Selection);
+        await _canvas.InvokeVoidAsync("setScene", items);
+    }
+
+    public async Task ZoomExtentsAsync()
+    {
+        if (_canvas is null) return;
+        var bb = S.Document.Bounds;
+        if (bb.IsEmpty) await _canvas.InvokeVoidAsync("zoomExtents", -50, -50, 250, 200);
+        else await _canvas.InvokeVoidAsync("zoomExtents", bb.Min.X, bb.Min.Y, bb.Max.X, bb.Max.Y);
+    }
+
+    [JSInvokable]
+    public object OnMove(double x, double y, double tol)
+    {
+        var snap = S.Engine.Snap(new Vec2(x, y), tol);
+        var preview = S.Engine.Preview(snap.Point).SelectMany(g => Gravicode.CAD.Studio.UI.DisplayList.Items(g, "#FFB46B", false)).ToList();
+        S.RaiseCursor(snap);   // only the status bar listens
+        return new { snap = new { x = snap.Point.X, y = snap.Point.Y, kind = snap.Kind.ToString() }, preview };
+    }
+
+    [JSInvokable]
+    public async Task OnClick(double x, double y, double tol, bool shift)
+    {
+        S.Engine.Click(new Vec2(x, y), tol, shift);
+        await PushSceneAsync();
+    }
+
+    [JSInvokable]
+    public async Task OnWindow(double x0, double y0, double x1, double y1, bool shift)
+    {
+        S.Engine.SelectWindow(new Vec2(x0, y0), new Vec2(x1, y1), shift);
+        await PushSceneAsync();
+    }
+
+    [JSInvokable]
+    public async Task OnKey(string key)
+    {
+        var e = S.Engine;
+        switch (key)
+        {
+            case "Escape": e.Escape(); break;
+            case "Enter": e.Enter(); break;
+            case "Delete": if (!e.IsBusy) e.DeleteSelection(); break;
+            case "F3": e.Settings.ObjectSnap = !e.Settings.ObjectSnap; e.Print($"<Osnap {(e.Settings.ObjectSnap ? "on" : "off")}>"); break;
+            case "F8": e.Settings.Ortho = !e.Settings.Ortho; e.Print($"<Ortho {(e.Settings.Ortho ? "on" : "off")}>"); break;
+            case "F9": e.Settings.GridSnap = !e.Settings.GridSnap; e.Print($"<Snap {(e.Settings.GridSnap ? "on" : "off")}>"); break;
+            case "F7": break;
+            case "Ctrl+Z": S.Document.Undo(); break;
+            case "Ctrl+Y": S.Document.Redo(); break;
+            case "Ctrl+A": e.SelectAll(); break;
+            case "Ctrl+S": await OnAppAction.InvokeAsync("app:save"); break;
+            case "Ctrl+O": await OnAppAction.InvokeAsync("app:open"); break;
+            case "ZoomExtents": await ZoomExtentsAsync(); break;
+        }
+        S.Notify();
+        await PushSceneAsync();
+    }
+
+    public async Task DownloadAsync(string name, byte[] bytes, string mime)
+    {
+        if (_module != null) await _module.InvokeVoidAsync("download", name, bytes, mime);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        S.ViewRequested -= OnViewRequested;
+        S.Changed -= OnSessionChanged;
+        try
+        {
+            if (_canvas != null) { await _canvas.InvokeVoidAsync("dispose"); await _canvas.DisposeAsync(); }
+            if (_module != null) await _module.DisposeAsync();
+        }
+        catch (JSDisconnectedException) { }
+        _ref?.Dispose();
+    }
+}

@@ -1,0 +1,69 @@
+@inherits SessionComponent
+@inject IJSRuntime JS
+
+<section class="cmdline" aria-label="Command line">
+    <div class="cmdline__history" @ref="_history" role="log" aria-live="polite">
+        @foreach (var line in S.Engine.History.TakeLast(60))
+        {
+            <div class="@(line.StartsWith("Command:") ? "h-cmd" : line.StartsWith("  ") ? "h-out" : "h-in")">@line</div>
+        }
+    </div>
+    <form class="cmdline__input" @onsubmit="SubmitAsync">
+        <label for="cmd-input" class="cmdline__prompt">@S.Engine.PromptText</label>
+        @if (S.Engine.CurrentPrompt is { Keywords.Count: > 0 } p)
+        {
+            <span class="kwchips">
+                @foreach (var k in p.Keywords)
+                {
+                    <button type="button" @onclick="() => Run(k)">@k</button>
+                }
+            </span>
+        }
+        <input id="cmd-input" autocomplete="off" spellcheck="false" @bind="_text" @bind:event="oninput" @onkeydown="OnKeyDown"
+               placeholder="@(S.Engine.IsBusy ? "" : S.T("Type a command — LINE, CIRCLE, EXTRUDE, BOX, HELP…", "Ketik perintah — LINE, CIRCLE, EXTRUDE, BOX, HELP…"))" />
+        @if (Suggestions.Count > 0)
+        {
+            <ul class="suggest">
+                @foreach (var c in Suggestions)
+                {
+                    <li><button type="button" @onclick="() => Run(c.Name)"><b>@c.Name</b><span>@(c.Aliases.Length > 0 ? string.Join(", ", c.Aliases) : "")</span><em>@c.Description</em></button></li>
+                }
+            </ul>
+        }
+    </form>
+</section>
+
+@code {
+    private string _text = "";
+    private ElementReference _history;
+    private int _shownHistory;
+
+    private IReadOnlyList<CommandInfo> Suggestions =>
+        S.Engine.IsBusy || _text.Length == 0 || _text.Contains(' ') ? [] :
+        S.Engine.Commands.Where(c => c.Name.StartsWith(_text, StringComparison.OrdinalIgnoreCase) || c.Aliases.Any(a => a.Equals(_text, StringComparison.OrdinalIgnoreCase)))
+            .OrderBy(c => c.Name.Length).Take(6).ToList();
+
+    private void SubmitAsync()
+    {
+        var t = _text; _text = "";
+        S.Engine.Submit(t);
+    }
+
+    private void Run(string text) { _text = ""; S.Engine.Submit(text); }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") { _text = ""; S.Engine.Escape(); }
+        if (e.Key == "Tab" && Suggestions.Count > 0) _text = Suggestions[0].Name;
+        if (e.Key == " " && _text.Trim().Length == 0) { /* space = Enter in AutoCAD */ }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (S.Engine.History.Count != _shownHistory)
+        {
+            _shownHistory = S.Engine.History.Count;
+            try { await JS.InvokeVoidAsync("eval", "document.querySelector('.cmdline__history')?.scrollTo(0, 1e9)"); } catch { }
+        }
+    }
+}

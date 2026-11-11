@@ -1,0 +1,221 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Gravicode.CAD.Studio.Desktop.App"
+             Name="Gravicode CAD Studio"
+             RequestedThemeVariant="Dark">
+  <!-- "Cyanotype workshop": blueprint model space, graphite chrome, safety-orange selection.
+       Same tokens as the web edition's studio.css. -->
+  <Application.Resources>
+    <Color x:Key="SystemAccentColor">#FF8A3D</Color>
+    <Color x:Key="SystemAccentColorLight1">#FF9C59</Color>
+    <Color x:Key="SystemAccentColorDark1">#E9772C</Color>
+    <SolidColorBrush x:Key="PaperBrush" Color="#0F2747" />
+    <SolidColorBrush x:Key="G950" Color="#0E1014" />
+    <SolidColorBrush x:Key="G900" Color="#14171C" />
+    <SolidColorBrush x:Key="G850" Color="#191D23" />
+    <SolidColorBrush x:Key="G800" Color="#1F242C" />
+    <SolidColorBrush x:Key="G700" Color="#2A303A" />
+    <SolidColorBrush x:Key="G600" Color="#3A414D" />
+    <SolidColorBrush x:Key="TextBrush" Color="#D9DEE5" />
+    <SolidColorBrush x:Key="MutedBrush" Color="#8B94A3" />
+    <SolidColorBrush x:Key="SelectBrush" Color="#FF8A3D" />
+    <SolidColorBrush x:Key="SelectDim" Color="#29FF8A3D" />
+    <SolidColorBrush x:Key="OutBrush" Color="#9FC3E8" />
+    <FontFamily x:Key="LabelFont">avares://GravicodeCadStudio/Assets/Fonts#Barlow Condensed</FontFamily>
+    <FontFamily x:Key="BodyFont">avares://GravicodeCadStudio/Assets/Fonts#IBM Plex Sans</FontFamily>
+    <FontFamily x:Key="MonoFont">avares://GravicodeCadStudio/Assets/Fonts#JetBrains Mono</FontFamily>
+  </Application.Resources>
+
+  <Application.Styles>
+    <FluentTheme />
+
+    <Style Selector="Window">
+      <Setter Property="FontFamily" Value="{StaticResource BodyFont}" />
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+    </Style>
+
+    <!-- type roles -->
+    <Style Selector="TextBlock.h">
+      <Setter Property="FontFamily" Value="{StaticResource LabelFont}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="LetterSpacing" Value="2" />
+      <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+    </Style>
+    <Style Selector="TextBlock.mono">
+      <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+    <Style Selector="TextBlock.muted">
+      <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+    </Style>
+
+    <!-- ribbon -->
+    <Style Selector="Button.tab">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0,0,0,2" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Padding" Value="14,0" />
+      <Setter Property="Height" Value="38" />
+      <Setter Property="FontFamily" Value="{StaticResource LabelFont}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontSize" Value="14.5" />
+      <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.tab.on">
+      <Setter Property="BorderBrush" Value="{StaticResource SelectBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+    </Style>
+    <Style Selector="Button.tab:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+    </Style>
+
+    <Style Selector="Button.rbtn">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="Padding" Value="4,0,8,0" />
+      <Setter Property="Height" Value="23" />
+      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+    </Style>
+    <Style Selector="Button.rbtn.lg">
+      <Setter Property="Height" Value="73" />
+      <Setter Property="MinWidth" Value="58" />
+      <Setter Property="Padding" Value="6,4" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.rbtn:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource G800}" />
+      <Setter Property="BorderBrush" Value="{StaticResource G600}" />
+    </Style>
+    <Style Selector="Button.rbtn.on /template/ ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource SelectDim}" />
+      <Setter Property="BorderBrush" Value="{StaticResource SelectBrush}" />
+    </Style>
+
+    <!-- small square tool buttons, chips -->
+    <Style Selector="Button.flat">
+      <Setter Property="Background" Value="{StaticResource G800}" />
+      <Setter Property="BorderBrush" Value="{StaticResource G600}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="Padding" Value="8,3" />
+      <Setter Property="FontFamily" Value="{StaticResource LabelFont}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="LetterSpacing" Value="0.8" />
+    </Style>
+    <Style Selector="Button.flat:pointerover /template/ ContentPresenter">
+      <Setter Property="BorderBrush" Value="{StaticResource SelectBrush}" />
+      <Setter Property="Background" Value="{StaticResource G800}" />
+    </Style>
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="{StaticResource SelectBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource SelectBrush}" />
+      <Setter Property="Foreground" Value="#1A0E04" />
+    </Style>
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#FF9C59" />
+      <Setter Property="Foreground" Value="#1A0E04" />
+    </Style>
+    <Style Selector="Button.chip">
+      <Setter Property="Background" Value="{StaticResource G800}" />
+      <Setter Property="BorderBrush" Value="{StaticResource G600}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="2" />
+      <Setter Property="Padding" Value="6,0" />
+      <Setter Property="Height" Value="20" />
+      <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+    <Style Selector="Button.chip:pointerover /template/ ContentPresenter">
+      <Setter Property="BorderBrush" Value="{StaticResource SelectBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource SelectBrush}" />
+    </Style>
+    <Style Selector="Button.pill">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{StaticResource G700}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="999" />
+      <Setter Property="Padding" Value="12,4" />
+      <Setter Property="FontFamily" Value="{StaticResource LabelFont}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="LetterSpacing" Value="1" />
+      <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+    </Style>
+    <Style Selector="Button.pill.on">
+      <Setter Property="Background" Value="{StaticResource SelectBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource SelectBrush}" />
+      <Setter Property="Foreground" Value="#1A0E04" />
+    </Style>
+    <Style Selector="Button.toggle">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="CornerRadius" Value="2" />
+      <Setter Property="Padding" Value="6,0" />
+      <Setter Property="Height" Value="19" />
+      <Setter Property="FontFamily" Value="{StaticResource LabelFont}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="LetterSpacing" Value="1.4" />
+      <Setter Property="Foreground" Value="{StaticResource G600}" />
+    </Style>
+    <Style Selector="Button.toggle.on">
+      <Setter Property="Background" Value="{StaticResource G800}" />
+      <Setter Property="BorderBrush" Value="{StaticResource G600}" />
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+    </Style>
+
+    <!-- start screen cards -->
+    <Style Selector="Button.card">
+      <Setter Property="Background" Value="{StaticResource G900}" />
+      <Setter Property="BorderBrush" Value="{StaticResource G700}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="0,0,14,14" />
+      <Setter Property="VerticalContentAlignment" Value="Top" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+    <Style Selector="Button.card:pointerover /template/ ContentPresenter">
+      <Setter Property="BorderBrush" Value="{StaticResource SelectBrush}" />
+      <Setter Property="Background" Value="{StaticResource G900}" />
+    </Style>
+
+    <!-- inputs in panels -->
+    <Style Selector="TextBox.field, ComboBox.field">
+      <Setter Property="MinHeight" Value="26" />
+      <Setter Property="Padding" Value="6,2" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="Background" Value="{StaticResource G800}" />
+      <Setter Property="BorderBrush" Value="{StaticResource G600}" />
+      <Setter Property="CornerRadius" Value="3" />
+    </Style>
+    <Style Selector="TextBox#CmdBox">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="20" />
+      <Setter Property="CaretBrush" Value="{StaticResource SelectBrush}" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBox#CmdBox:focus /template/ Border#PART_BorderElement, TextBox#CmdBox:pointerover /template/ Border#PART_BorderElement">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="ScrollBar">
+      <Setter Property="AllowAutoHide" Value="True" />
+    </Style>
+  </Application.Styles>
+</Application>

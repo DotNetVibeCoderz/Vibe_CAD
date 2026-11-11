@@ -1,0 +1,205 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:tn="clr-namespace:ThreeNet.Avalonia;assembly=ThreeNet.Avalonia"
+        xmlns:c="clr-namespace:Gravicode.CAD.Studio.Desktop.Controls"
+        x:Class="Gravicode.CAD.Studio.Desktop.MainWindow"
+        Title="Gravicode CAD Studio"
+        Icon="avares://GravicodeCadStudio/Assets/icon.png"
+        Width="1600" Height="1000" MinWidth="1024" MinHeight="680"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource G950}">
+  <Grid>
+    <!-- ============================================================ editor -->
+    <Grid x:Name="Editor" RowDefinitions="Auto,*,148,28">
+      <!-- ribbon -->
+      <Border Grid.Row="0" Background="{StaticResource G900}" BorderBrush="{StaticResource G700}" BorderThickness="0,0,0,1">
+        <StackPanel>
+          <Border BorderBrush="{StaticResource G800}" BorderThickness="0,0,0,1" Height="38">
+            <DockPanel Margin="12,0">
+              <Button x:Name="BrandButton" DockPanel.Dock="Left" Background="Transparent" BorderThickness="0" Padding="0" Margin="0,0,18,0" Click="OnBrand" ToolTip.Tip="Start screen">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Image Source="avares://GravicodeCadStudio/Assets/icon.png" Width="22" Height="22" />
+                  <TextBlock Text="GRAVICODE" FontFamily="{StaticResource LabelFont}" FontWeight="Bold" FontSize="17" LetterSpacing="0.7" VerticalAlignment="Center" />
+                  <TextBlock Text="CAD STUDIO" FontFamily="{StaticResource LabelFont}" FontWeight="Medium" FontSize="17" LetterSpacing="0.7" Foreground="{StaticResource SelectBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <StackPanel x:Name="Tabs" DockPanel.Dock="Left" Orientation="Horizontal" />
+              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="0" VerticalAlignment="Center" Margin="12,0,0,0">
+                <Button x:Name="LangEn" Classes="toggle" Content="EN" Click="OnLang" Tag="en" />
+                <Button x:Name="LangId" Classes="toggle" Content="ID" Click="OnLang" Tag="id" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="10">
+                <TextBlock x:Name="DocName" FontWeight="SemiBold" VerticalAlignment="Center" />
+                <TextBlock x:Name="DocCat" FontFamily="{StaticResource LabelFont}" FontWeight="Medium" FontSize="12.5" LetterSpacing="1.4" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" />
+              </StackPanel>
+            </DockPanel>
+          </Border>
+          <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+            <StackPanel x:Name="RibbonPanel" Orientation="Horizontal" Height="98" Margin="6,6,6,0" />
+          </ScrollViewer>
+        </StackPanel>
+      </Border>
+
+      <!-- body -->
+      <Grid Grid.Row="1" ColumnDefinitions="232,*,272">
+        <Border Grid.Column="0" Background="{StaticResource G900}" BorderBrush="{StaticResource G700}" BorderThickness="0,0,1,0">
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled"><StackPanel x:Name="LeftPanel" Margin="0,0,0,12" /></ScrollViewer>
+        </Border>
+
+        <Grid x:Name="Viewport" Grid.Column="1" ColumnDefinitions="*,1,*" Background="{StaticResource PaperBrush}">
+          <Panel x:Name="Pane2D" Grid.Column="0">
+            <c:BlueprintCanvas x:Name="Canvas" />
+            <TextBlock x:Name="Tag2D" Text="TOP · MODEL" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,28,12,0" IsHitTestVisible="False"
+                       FontFamily="{StaticResource LabelFont}" FontWeight="SemiBold" FontSize="11.5" LetterSpacing="2.4" Foreground="#8CE6EDF3" />
+          </Panel>
+          <Border x:Name="Splitter" Grid.Column="1" Background="{StaticResource G700}" />
+          <Panel x:Name="Pane3D" Grid.Column="2" Background="#11161D">
+            <tn:ThreeNetView x:Name="View3D" />
+            <Border x:Name="Fallback3DCover" Background="#11161D" IsVisible="False"><Image x:Name="Fallback3D" Stretch="Uniform" /></Border>
+            <Border x:Name="Empty3D" Background="#11161D" IsVisible="False">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
+              <TextBlock x:Name="Empty3DText" HorizontalAlignment="Center" />
+              <TextBlock x:Name="Empty3DHint" Classes="muted" HorizontalAlignment="Center" />
+              <Button Classes="flat" Content="BOX" HorizontalAlignment="Center" Margin="0,10,0,0" Click="OnBox" />
+            </StackPanel>
+            </Border>
+            <TextBlock x:Name="Tag3D" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12,12,0,0" IsHitTestVisible="False"
+                       FontFamily="{StaticResource LabelFont}" FontWeight="SemiBold" FontSize="11.5" LetterSpacing="2.4" Foreground="#8CE6EDF3" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,10,10,0" Spacing="2">
+              <Button Classes="chip" Content="ISO" Click="OnView3D" Tag="iso" />
+              <Button Classes="chip" Content="TOP" Click="OnView3D" Tag="top" />
+              <Button Classes="chip" Content="FRONT" Click="OnView3D" Tag="front" />
+              <Button Classes="chip" Content="RIGHT" Click="OnView3D" Tag="right" />
+            </StackPanel>
+          </Panel>
+        </Grid>
+
+        <Border Grid.Column="2" Background="{StaticResource G900}" BorderBrush="{StaticResource G700}" BorderThickness="1,0,0,0">
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled"><StackPanel x:Name="RightPanel" Margin="0,0,0,12" /></ScrollViewer>
+        </Border>
+      </Grid>
+
+      <!-- command line -->
+      <Border Grid.Row="2" Background="{StaticResource G950}" BorderBrush="{StaticResource G700}" BorderThickness="0,1,0,0">
+        <Grid RowDefinitions="*,Auto">
+          <ScrollViewer x:Name="HistoryScroll" Padding="14,6,14,2" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel x:Name="History" />
+          </ScrollViewer>
+          <Border Grid.Row="1" Background="{StaticResource G900}" BorderBrush="{StaticResource G700}" BorderThickness="0,1,0,0" Padding="14,6,14,8">
+            <DockPanel>
+              <TextBlock x:Name="PromptLabel" DockPanel.Dock="Left" Classes="mono" FontSize="13" FontWeight="Medium" Foreground="{StaticResource SelectBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
+              <StackPanel x:Name="Keywords" DockPanel.Dock="Left" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" Margin="0,0,10,0" />
+              <TextBox x:Name="CmdBox" />
+            </DockPanel>
+          </Border>
+          <Border x:Name="SuggestBox" Grid.RowSpan="2" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="14,0,0,40" MinWidth="460"
+                  Background="{StaticResource G850}" BorderBrush="{StaticResource G600}" BorderThickness="1" CornerRadius="4" Padding="4" IsVisible="False"
+                  BoxShadow="0 10 30 0 #80000000">
+            <StackPanel x:Name="Suggestions" />
+          </Border>
+        </Grid>
+      </Border>
+
+      <!-- status bar -->
+      <Border Grid.Row="3" Background="{StaticResource G900}" BorderBrush="{StaticResource G700}" BorderThickness="0,1,0,0" Padding="10,0">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center" Width="230">
+            <TextBlock x:Name="Coords" Classes="mono" Text="0, 0" />
+            <TextBlock x:Name="SnapKindText" Classes="mono" Foreground="{StaticResource SelectBrush}" Margin="6,0,0,0" />
+          </StackPanel>
+          <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+            <Button x:Name="TgSnap" Classes="toggle" Content="SNAP" Click="OnToggle" Tag="snap" ToolTip.Tip="Grid snap (F9)" />
+            <Button x:Name="TgOrtho" Classes="toggle" Content="ORTHO" Click="OnToggle" Tag="ortho" ToolTip.Tip="Ortho (F8)" />
+            <Button x:Name="TgOsnap" Classes="toggle" Content="OSNAP" Click="OnToggle" Tag="osnap" ToolTip.Tip="Object snap (F3)" />
+            <TextBlock Text="GRID" FontFamily="{StaticResource LabelFont}" FontWeight="SemiBold" FontSize="12" LetterSpacing="1.4" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="8,0,4,0" />
+            <TextBox x:Name="GridSizeBox" Width="64" MinHeight="18" Height="20" Padding="4,0" FontFamily="{StaticResource MonoFont}" FontSize="11.5" VerticalContentAlignment="Center" />
+          </StackPanel>
+          <TextBlock x:Name="StatusRight" DockPanel.Dock="Right" Classes="mono muted" VerticalAlignment="Center" />
+          <TextBlock x:Name="StatusMid" Classes="mono muted" VerticalAlignment="Center" Margin="18,0" TextTrimming="CharacterEllipsis" />
+        </DockPanel>
+      </Border>
+
+      <Border x:Name="Toast" Grid.Row="1" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,24" Padding="16,8"
+              Background="{StaticResource G800}" BorderBrush="{StaticResource SelectBrush}" BorderThickness="1" CornerRadius="4" IsVisible="False"
+              BoxShadow="0 10 30 0 #73000000">
+        <TextBlock x:Name="ToastText" />
+      </Border>
+    </Grid>
+
+    <!-- ============================================================ start screen -->
+    <ScrollViewer x:Name="StartScreen" Background="{StaticResource G950}" HorizontalScrollBarVisibility="Disabled">
+      <StackPanel x:Name="StartContent">
+        <Border BorderBrush="{StaticResource G800}" BorderThickness="0,0,0,1" Padding="40,14">
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="8">
+              <Image Source="avares://GravicodeCadStudio/Assets/icon.png" Width="26" Height="26" />
+              <TextBlock Text="GRAVICODE" FontFamily="{StaticResource LabelFont}" FontWeight="Bold" FontSize="18" LetterSpacing="0.7" VerticalAlignment="Center" />
+              <TextBlock Text="CAD STUDIO" FontFamily="{StaticResource LabelFont}" FontWeight="Medium" FontSize="18" LetterSpacing="0.7" Foreground="{StaticResource SelectBrush}" VerticalAlignment="Center" />
+              <TextBlock x:Name="StartVersion" Classes="mono muted" VerticalAlignment="Center" Margin="10,0,0,0" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+              <Button x:Name="SLangEn" Classes="toggle" Content="EN" Click="OnLang" Tag="en" />
+              <Button x:Name="SLangId" Classes="toggle" Content="ID" Click="OnLang" Tag="id" />
+            </StackPanel>
+          </DockPanel>
+        </Border>
+
+        <!-- hero on blueprint paper -->
+        <Border x:Name="Hero" Padding="48,64" BorderBrush="#1E3A63" BorderThickness="0,0,0,1">
+          <Grid ColumnDefinitions="*,48,*">
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock x:Name="HeroEyebrow" FontFamily="{StaticResource LabelFont}" FontWeight="SemiBold" FontSize="13.5" LetterSpacing="3" Foreground="{StaticResource SelectBrush}" Margin="0,0,0,14" />
+              <TextBlock x:Name="HeroLine1" FontFamily="{StaticResource LabelFont}" FontWeight="Bold" FontSize="78" LineHeight="76" TextWrapping="Wrap" Foreground="#E6EDF3" />
+              <TextBlock x:Name="HeroLine2" FontFamily="{StaticResource LabelFont}" FontWeight="Bold" FontSize="78" LineHeight="76" TextWrapping="Wrap" Foreground="Transparent" />
+              <TextBlock x:Name="HeroLede" TextWrapping="Wrap" MaxWidth="560" HorizontalAlignment="Left" FontSize="16" Foreground="#B9C7DA" Margin="0,22,0,28" />
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <Button x:Name="BtnNew" Classes="flat primary" Padding="16,9" FontSize="15" Click="OnNewBlank" />
+                <Button x:Name="BtnOpen" Classes="flat" Padding="16,9" FontSize="15" Click="OnOpen" />
+                <Button x:Name="BtnBack" Classes="flat" Padding="16,9" FontSize="15" Background="Transparent" Click="OnBack" IsVisible="False" />
+              </StackPanel>
+            </StackPanel>
+            <Grid Grid.Column="2" RowDefinitions="*,Auto" VerticalAlignment="Center">
+              <Border BorderBrush="#59E6EDF3" BorderThickness="1" Background="#0A1C35" ClipToBounds="True">
+                <Panel>
+                  <Image x:Name="HeroImage" Stretch="Uniform" />
+                  <Border BorderBrush="#2EE6EDF3" BorderThickness="1" Margin="8" />
+                </Panel>
+              </Border>
+              <Border Grid.Row="1" HorizontalAlignment="Right" Margin="32,-28,-12,0" MaxWidth="440" Padding="16,12"
+                      Background="{StaticResource G950}" BorderBrush="{StaticResource G700}" BorderThickness="3,1,1,1" BoxShadow="0 18 40 0 #73000000">
+                <Border.BorderBrush>
+                  <SolidColorBrush Color="#FF8A3D" />
+                </Border.BorderBrush>
+                <StackPanel x:Name="Tape" Spacing="2" />
+              </Border>
+            </Grid>
+          </Grid>
+        </Border>
+
+        <StackPanel Margin="48,40,34,8">
+          <StackPanel Orientation="Horizontal" Spacing="18" Margin="0,0,0,16">
+            <TextBlock x:Name="TplTitle" FontFamily="{StaticResource LabelFont}" FontWeight="Bold" FontSize="28" />
+            <TextBlock x:Name="TplSub" Classes="muted" VerticalAlignment="Bottom" Margin="0,0,0,4" />
+          </StackPanel>
+          <WrapPanel x:Name="TemplateCards" />
+
+          <StackPanel Orientation="Horizontal" Spacing="18" Margin="0,26,0,16">
+            <TextBlock x:Name="SmpTitle" FontFamily="{StaticResource LabelFont}" FontWeight="Bold" FontSize="28" />
+            <TextBlock x:Name="SmpSub" Classes="muted" VerticalAlignment="Bottom" Margin="0,0,0,4" />
+          </StackPanel>
+          <WrapPanel x:Name="CategoryChips" Margin="0,0,0,16" />
+          <WrapPanel x:Name="SampleCards" />
+        </StackPanel>
+
+        <DockPanel Margin="48,24,48,28">
+          <TextBlock x:Name="FootLeft" Classes="muted" FontSize="12.5" />
+          <TextBlock x:Name="FootRight" Classes="muted" FontSize="12.5" HorizontalAlignment="Right" />
+        </DockPanel>
+      </StackPanel>
+    </ScrollViewer>
+
+    <Border x:Name="Busy" Background="#B80A1C35" IsVisible="False">
+      <TextBlock x:Name="BusyText" HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="{StaticResource LabelFont}" FontWeight="SemiBold" FontSize="20" LetterSpacing="1.6" />
+    </Border>
+  </Grid>
+</Window>

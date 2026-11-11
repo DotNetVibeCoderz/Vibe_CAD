@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Gravicode.CAD.Studio</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <Description>Gravicode CAD Studio core: document model, AutoCAD-style command engine, snapping, undo/redo, project files, templates and samples shared by the web and desktop editions.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Gravicode.CAD.AI\Gravicode.CAD.AI.csproj" />
+    <ProjectReference Include="..\..\src\Gravicode.CAD.Constraint\Gravicode.CAD.Constraint.csproj" />
+    <ProjectReference Include="..\..\src\Gravicode.CAD.CAM\Gravicode.CAD.CAM.csproj" />
+    <ProjectReference Include="..\..\src\Gravicode.CAD.FEM\Gravicode.CAD.FEM.csproj" />
+    <ProjectReference Include="..\..\src\Gravicode.CAD.Rendering\Gravicode.CAD.Rendering.csproj" />
+    <ProjectReference Include="..\..\src\Gravicode.CAD.Native\Gravicode.CAD.Native.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\**\*.glb" LogicalName="assets/%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>
