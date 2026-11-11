@@ -14,8 +14,20 @@
         @if (S.ViewMode != "3d")
         {
             <section class="viewport__pane viewport__pane--2d">
-                <span class="pane-tag">@S.T("TOP · MODEL", "ATAS · MODEL")</span>
+                <span class="pane-tag">@(S.Document.ActiveSpace is null ? S.T("TOP · MODEL", "ATAS · MODEL") : S.Engine.SpaceName(S.Document.ActiveSpace).ToUpperInvariant())</span>
                 <Canvas2D @ref="_canvas" OnAppAction="RunAsync" />
+                <nav class="space-bar" aria-label="@S.T("Spaces", "Ruang")">
+                    <button type="button" class="@(S.Document.ActiveSpace is null ? "on" : "")" @onclick="() => S.Engine.SetSpace(null)">@S.T("MODEL", "MODEL")</button>
+                    @foreach (var p in S.Document.Planes.Values)
+                    {
+                        <button type="button" class="plane @(S.Document.ActiveSpace == p.Key ? "on" : "")" title="@S.T("Sketch on this face", "Gambar di permukaan ini")" @onclick="() => S.Engine.SetSpace(p.Key)">@p.Name</button>
+                    }
+                    @foreach (var l in S.Document.Layouts.Values)
+                    {
+                        <button type="button" class="layout @(S.Document.ActiveSpace == l.Key ? "on" : "")" title="@($"{l.Paper} {(l.Landscape ? "landscape" : "portrait")}")" @onclick="() => S.Engine.SetSpace(l.Key)">@l.Name</button>
+                    }
+                    <button type="button" class="add" title="@S.T("New paper-space layout", "Layout kertas baru")" @onclick='() => RunAsync("LAYOUT New")'>+ LAYOUT</button>
+                </nav>
             </section>
         }
         @if (S.ViewMode != "2d")
@@ -85,8 +97,13 @@
         }
     }
 
-    private void OnPick3D(CadPickEventArgs e) =>
-        S.Engine.PickObject(e.BodyIndex >= 0 && e.BodyIndex < _bodies.Count ? _bodies[e.BodyIndex].Id : null, e.Additive);
+    private void OnPick3D(CadPickEventArgs e)
+    {
+        Guid? id = e.BodyIndex >= 0 && e.BodyIndex < _bodies.Count ? _bodies[e.BodyIndex].Id : null;
+        // "click a face" prompts (UCS Face) take the face; otherwise a click selects the solid
+        if (S.Engine.CurrentPrompt?.Kind == PromptKind.Face) { if (id is { } f) S.Engine.PickFace(f, e.Point, e.Normal); }
+        else S.Engine.PickObject(id, e.Additive);
+    }
 
     private void OnGizmo3D(CadGizmoEventArgs e)
     {

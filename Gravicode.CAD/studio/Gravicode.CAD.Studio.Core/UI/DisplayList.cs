@@ -21,7 +21,11 @@ public static class DisplayList
     /// <summary>Scene for an editor: the document, the selection highlight and — when idle — grips.</summary>
     public static List<DisplayItem> Build(Commands.CommandEngine engine)
     {
-        var items = Build(engine.Document, engine.Selection);
+        var items = new List<DisplayItem>();
+        // paper sheet / face outline first, under everything else (not selectable: no id)
+        foreach (var (g, color) in engine.ReferenceGeometry())
+            items.AddRange(Items(g, color, false));
+        items.AddRange(Build(engine.Document, engine.Selection));
         bool gripping = engine.HotGrip is not null;
         if ((engine.IsBusy && !gripping) || engine.Selection.Count is 0 or > MaxGripObjects) return items;
         foreach (var e in engine.Document.Entities)
@@ -40,7 +44,7 @@ public static class DisplayList
     public static List<DisplayItem> Build(StudioDocument doc, IReadOnlySet<Guid> selection)
     {
         var items = new List<DisplayItem>(doc.Entities.Count + doc.Solids.Count);
-        foreach (var s in doc.VisibleSolids)
+        foreach (var s in doc.ActiveSpace is null ? doc.VisibleSolids : [])
         {
             var segs = s.PlanOutline;
             var pts = new double[segs.Count * 4];

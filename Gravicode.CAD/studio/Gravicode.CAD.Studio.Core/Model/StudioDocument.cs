@@ -6,7 +6,8 @@ namespace Gravicode.CAD.Studio;
 public sealed record Layer(string Name, string Color = "#E6EDF3", bool Visible = true, bool Locked = false);
 
 /// <summary>A 2D drafting object. Geometry objects are treated as immutable: edits replace the entity.</summary>
-public sealed record StudioEntity(Guid Id, string Layer, DrawingEntity Geometry, string? Color = null)
+/// <remarks><see cref="Space"/>: null = model space; otherwise a work plane (<c>plane:…</c>) or a layout (<c>layout:…</c>).</remarks>
+public sealed record StudioEntity(Guid Id, string Layer, DrawingEntity Geometry, string? Color = null, string? Space = null)
 {
     public static StudioEntity Create(string layer, DrawingEntity g, string? color = null) => new(Guid.NewGuid(), layer, g, color);
 }
@@ -54,7 +55,7 @@ public sealed record StudioSolid(Guid Id, string Name, string Layer, Mesh Mesh, 
 
 /// <summary>Immutable snapshot used by undo/redo (lists are copied, objects are shared).</summary>
 public sealed record DocState(IReadOnlyList<Layer> Layers, string CurrentLayer, IReadOnlyList<StudioEntity> Entities, IReadOnlyList<StudioSolid> Solids,
-    IReadOnlyDictionary<string, BlockDefinition> Blocks);
+    IReadOnlyDictionary<string, BlockDefinition> Blocks, string? ActiveSpace, IReadOnlyDictionary<string, WorkPlane> Planes, IReadOnlyDictionary<string, Layout> Layouts);
 
 /// <summary>
 /// A Gravicode CAD Studio drawing: layers, 2D entities (model space) and 3D solids, with undo/redo.
@@ -74,6 +75,13 @@ public sealed class StudioDocument
     /// <summary>Block definitions by name (case-insensitive). Definitions are immutable; redefining replaces them.</summary>
     public Dictionary<string, BlockDefinition> Blocks { get; private set; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Space being edited: null = model, <c>plane:…</c> = sketch on a face, <c>layout:…</c> = paper space.</summary>
+    public string? ActiveSpace { get; set; }
+    public Dictionary<string, WorkPlane> Planes { get; private set; } = [];
+    public Dictionary<string, Layout> Layouts { get; private set; } = [];
+    public WorkPlane? ActivePlane => ActiveSpace is { } k && Planes.TryGetValue(k, out var p) ? p : null;
+    public Layout? ActiveLayout => ActiveSpace is { } k && Layouts.TryGetValue(k, out var l) ? l : null;
+
     private readonly Stack<(string Label, DocState State)> _undo = new();
     private readonly Stack<(string Label, DocState State)> _redo = new();
 
@@ -86,12 +94,14 @@ public sealed class StudioDocument
     public bool CanRedo => _redo.Count > 0;
     public string? UndoLabel => _undo.Count > 0 ? _undo.Peek().Label : null;
 
-    public DocState Snapshot() => new([.. Layers], CurrentLayer, [.. Entities], [.. Solids], new Dictionary<string, BlockDefinition>(Blocks, StringComparer.OrdinalIgnoreCase));
+    public DocState Snapshot() => new([.. Layers], CurrentLayer, [.. Entities], [.. Solids], new Dictionary<string, BlockDefinition>(Blocks, StringComparer.OrdinalIgnoreCase),
+        ActiveSpace, new Dictionary<string, WorkPlane>(Planes), new Dictionary<string, Layout>(Layouts));
 
     private void Restore(DocState s)
     {
         Layers = [.. s.Layers]; CurrentLayer = s.CurrentLayer; Entities = [.. s.Entities]; Solids = [.. s.Solids];
         Blocks = new Dictionary<string, BlockDefinition>(s.Blocks, StringComparer.OrdinalIgnoreCase);
+        ActiveSpace = s.ActiveSpace; Planes = new(s.Planes); Layouts = new(s.Layouts);
     }
 
     /// <summary>Applies an undoable edit.</summary>
@@ -100,7 +110,12 @@ public sealed class StudioDocument
         _undo.Push((label, Snapshot()));
         if (_undo.Count > 200) TrimUndo();
         _redo.Clear();
+        var before = ActiveSpace is null ? null : Entities.Select(e => e.Id).ToHashSet();
         change(this);
+        // objects created while a plane or layout is active belong to it
+        if (before != null && ActiveSpace is { } space)
+            for (int i = 0; i < Entities.Count; i++)
+                if (Entities[i].Space is null && !before.Contains(Entities[i].Id)) Entities[i] = Entities[i] with { Space = space };
         Touch();
     }
 
@@ -165,21 +180,33 @@ public sealed class StudioDocument
     {
         var h = new HashCode();
         foreach (var s in VisibleSolids) { h.Add(s.Id); h.Add(s.Mesh); h.Add(s.Color); h.Add(s.Metallic); h.Add(s.Roughness); }
+        // sketches on faces are drawn in 3D too
+        foreach (var e in Entities) if (e.Space is { } sp && sp.StartsWith(Spaces.PlanePrefix)) { h.Add(e.Id); h.Add(e.Geometry); }
         return h.ToHashCode();
     }
 
     /// <summary>Solids in the order 3D viewers receive them (visible, non-empty) — index i is body i in the viewer.</summary>
     public IReadOnlyList<StudioSolid> ViewerSolids() => [.. VisibleSolids.Where(s => !s.Mesh.IsEmpty)];
 
-    public IEnumerable<StudioEntity> VisibleEntities => Entities.Where(e => LayerOf(e.Layer).Visible);
+    /// <summary>Visible objects of the active space — what the 2D view shows and commands work on.</summary>
+    public IEnumerable<StudioEntity> VisibleEntities => Entities.Where(e => e.Space == ActiveSpace && LayerOf(e.Layer).Visible);
+    /// <summary>Visible model-space objects (exports, plots, viewports), whatever space is active.</summary>
+    public IEnumerable<StudioEntity> ModelEntities => Entities.Where(e => e.Space is null && LayerOf(e.Layer).Visible);
     public IEnumerable<StudioSolid> VisibleSolids => Solids.Where(s => LayerOf(s.Layer).Visible);
 
+    /// <summary>Extents of the active space (paper sheet in a layout; the face and its sketch on a plane).</summary>
     public BoundingBox Bounds
     {
         get
         {
             var bb = BoundingBox.Empty;
+            if (ActiveLayout is { } layout) { var (w, h) = layout.Size; return bb.Include(Vec3.Zero).Include(new Vec3(w, h, 0)); }
             foreach (var e in VisibleEntities) { var (a, b) = e.Geometry.Extents(); bb = bb.Include(a.ToVec3()).Include(b.ToVec3()); }
+            if (ActivePlane is not null)
+            {
+                foreach (var (g, _) in Spaces.Reference(this)) { var (a, b) = g.Extents(); bb = bb.Include(a.ToVec3()).Include(b.ToVec3()); }
+                return bb;
+            }
             foreach (var s in VisibleSolids) bb = bb.Union(s.Mesh.Bounds);
             return bb;
         }
@@ -191,7 +218,7 @@ public sealed class StudioDocument
         var m = new CadModel(Name) { Units = Units };
         foreach (var s in ViewerSolids()) m.Bodies.Add(s.ToBody());
         if (includeDrawing)
-            foreach (var e in VisibleEntities)
+            foreach (var e in ModelEntities)
                 foreach (var (prim, layer, color) in Geometry2D.Primitives(e.Geometry))
                 {
                     // studio-only objects (dimensions, hatches, blocks) are exploded so every exporter understands them
@@ -199,6 +226,14 @@ public sealed class StudioDocument
                     g.Layer = layer ?? e.Layer;
                     g.Color = CadColor.FromHex(color ?? e.Color ?? LayerOf(g.Layer).Color);
                     m.Drawing.Add(g);
+                }
+        // sketches on faces become 3D wires on their plane
+        foreach (var e in Entities)
+            if (e.Space is { } sp && Planes.TryGetValue(sp, out var plane) && LayerOf(e.Layer).Visible)
+                foreach (var (prim, _, color) in Geometry2D.Primitives(e.Geometry))
+                {
+                    var pts = prim.Tessellate(0.1);
+                    if (pts.Count >= 2) m.Wires.Add(new Polyline3(pts.Select(plane.ToWorld)) { Layer = e.Layer, Color = CadColor.FromHex(color ?? e.Color ?? LayerOf(e.Layer).Color) });
                 }
         if (Description != null) m.Metadata["description"] = Description;
         return m;

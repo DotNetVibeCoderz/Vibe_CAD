@@ -24,25 +24,34 @@ public static class ProjectFile
 
     private sealed record Dto(int Version, string App, string Name, string Units, string? Description, string? Category,
         List<Layer> Layers, string CurrentLayer, List<EntityDto> Entities, List<SolidDto> Solids, Dictionary<string, string> Properties,
-        List<BlockDto>? Blocks = null);
+        List<BlockDto>? Blocks = null, List<PlaneDto>? Planes = null, List<LayoutDto>? Layouts = null, string? ActiveSpace = null);
+
+    private sealed record PlaneDto(string Key, string Name, double[] Frame, Guid? Solid);
+    /// <summary>Viewports as [minX, minY, maxX, maxY, centreX, centreY, scale].</summary>
+    private sealed record LayoutDto(string Key, string Name, string Paper, bool Landscape, bool TitleBlock, List<double[]> Viewports);
 
     /// <summary>Block definition: its objects stored like model-space entities (relative to the base point).</summary>
     private sealed record BlockDto(string Name, List<EntityDto> Items, string? Description = null);
 
-    private sealed record EntityDto(Guid Id, string Layer, string? Color, string Kind, double[] V, string? Text = null, bool Closed = false, double[]? B = null);
+    private sealed record EntityDto(Guid Id, string Layer, string? Color, string Kind, double[] V, string? Text = null, bool Closed = false, double[]? B = null, string? Space = null);
     private sealed record SolidDto(Guid Id, string Name, string Layer, string Color, double Metallic, double Roughness, string Positions, string Indices);
 
     public static byte[] Save(StudioDocument doc)
     {
         var dto = new Dto(FormatVersion, $"{GravicodeCad.ProductName} Studio {GravicodeCad.Version}", doc.Name, doc.Units.ToString(), doc.Description, doc.Category,
             doc.Layers, doc.CurrentLayer,
-            [.. doc.Entities.Select(ToDto).OfType<EntityDto>()],
+            [.. doc.Entities.Select(e => ToDto(e) is { } dto ? dto with { Space = e.Space } : null).OfType<EntityDto>()],
             [.. doc.Solids.Select(s => new SolidDto(s.Id, s.Name, s.Layer, s.Color, s.Metallic, s.Roughness,
                 Convert.ToBase64String(MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(s.Mesh.Positions))),
                 Convert.ToBase64String(MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(s.Mesh.Indices)))))],
             doc.Properties,
             doc.Blocks.Count == 0 ? null : [.. doc.Blocks.Values.Select(b => new BlockDto(b.Name,
-                [.. b.Items.Select(i => ToDto(new StudioEntity(Guid.Empty, i.Layer, i.Geometry, i.Color))).OfType<EntityDto>()], b.Description))]);
+                [.. b.Items.Select(i => ToDto(new StudioEntity(Guid.Empty, i.Layer, i.Geometry, i.Color))).OfType<EntityDto>()], b.Description))],
+            doc.Planes.Count == 0 ? null : [.. doc.Planes.Values.Select(p => new PlaneDto(p.Key, p.Name,
+                [p.Origin.X, p.Origin.Y, p.Origin.Z, p.XAxis.X, p.XAxis.Y, p.XAxis.Z, p.YAxis.X, p.YAxis.Y, p.YAxis.Z], p.SolidId))],
+            doc.Layouts.Count == 0 ? null : [.. doc.Layouts.Values.Select(l => new LayoutDto(l.Key, l.Name, l.Paper, l.Landscape, l.TitleBlock,
+                [.. l.Viewports.Select(v => new[] { v.Min.X, v.Min.Y, v.Max.X, v.Max.Y, v.ModelCenter.X, v.ModelCenter.Y, v.Scale })]))],
+            doc.ActiveSpace);
         using var ms = new MemoryStream();
         using (var gz = new GZipStream(ms, CompressionLevel.Optimal, leaveOpen: true))
             JsonSerializer.Serialize(gz, dto, Json);
@@ -74,7 +83,16 @@ public static class ProjectFile
         foreach (var b in dto.Blocks ?? [])
             doc.Blocks[b.Name] = new BlockDefinition(b.Name,
                 b.Items.Select(i => FromDto(i, doc.Blocks) is { } g ? new BlockItem(g, i.Layer, i.Color) : null).OfType<BlockItem>(), b.Description);
-        foreach (var e in dto.Entities) if (FromDto(e, doc.Blocks) is { } g) doc.Entities.Add(new StudioEntity(e.Id, e.Layer, g, e.Color));
+        foreach (var e in dto.Entities) if (FromDto(e, doc.Blocks) is { } g) doc.Entities.Add(new StudioEntity(e.Id, e.Layer, g, e.Color, e.Space));
+        foreach (var p in dto.Planes ?? [])
+        {
+            var f = p.Frame;
+            doc.Planes[p.Key] = new WorkPlane(p.Key, p.Name, new Vec3(f[0], f[1], f[2]), new Vec3(f[3], f[4], f[5]), new Vec3(f[6], f[7], f[8]), p.Solid);
+        }
+        foreach (var l in dto.Layouts ?? [])
+            doc.Layouts[l.Key] = new Layout(l.Key, l.Name, l.Paper, l.Landscape, l.TitleBlock,
+                [.. l.Viewports.Select(v => new LayoutViewport(new Vec2(v[0], v[1]), new Vec2(v[2], v[3]), new Vec2(v[4], v[5]), v[6]))]);
+        if (dto.ActiveSpace is { } space && (doc.Planes.ContainsKey(space) || doc.Layouts.ContainsKey(space))) doc.ActiveSpace = space;
         foreach (var sd in dto.Solids)
         {
             var pos = MemoryMarshal.Cast<byte, Vec3>(Convert.FromBase64String(sd.Positions)).ToArray();

@@ -338,6 +338,15 @@ public static partial class StudioCommands
 
     private static IEnumerable<Prompt> PlotCmd(CommandContext c)
     {
+        if (c.Doc.ActiveLayout is { } layout)
+        {
+            // a layout plots 1:1 on its own paper
+            yield return Prompt.Keyword("Format <PDF>", "PDF", "SVG");
+            var lr = Plotter.PlotLayout(c.Doc, layout, c.Keyword == "SVG" ? "svg" : "pdf");
+            c.Print($"  Plotted layout {layout.Name} on {lr.Paper}.");
+            c.Engine.Deliver(lr.FileName, lr.Data, lr.Mime);
+            yield break;
+        }
         yield return Prompt.Keyword("Paper size <A3>", "A4", "A3", "A2", "A1", "A0");
         var paper = c.Keyword ?? "A3";
         yield return Prompt.Keyword("Orientation <Landscape>", "Landscape", "Portrait");

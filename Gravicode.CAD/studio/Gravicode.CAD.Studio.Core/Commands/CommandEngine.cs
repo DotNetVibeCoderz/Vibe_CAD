@@ -45,8 +45,10 @@ public sealed class CommandContext(CommandEngine engine)
     };
     public string Text => Input switch { Input.TextInput t => t.Value, Input.KeywordInput k => k.Value, _ => "" };
     public string? Keyword => Input is Input.KeywordInput k ? k.Value : null;
+    public Input.FaceInput? Face => Input as Input.FaceInput;
 
     public void Print(string message) => Engine.Print(message);
+    public void RequestView(string what) => Engine.RequestView(what);
 
     public IReadOnlyList<StudioEntity> SelectedEntities => [.. Doc.Entities.Where(e => Engine.Selection.Contains(e.Id))];
     public IReadOnlyList<StudioSolid> SelectedSolids => [.. Doc.Solids.Where(s => Engine.Selection.Contains(s.Id))];
@@ -208,8 +210,13 @@ public sealed partial class CommandEngine
     /// </summary>
     public SolidHit? Pick3D(Vec3 origin, Vec3 direction, bool additive = false)
     {
-        if (_running != null && CurrentPrompt?.Kind != PromptKind.Select) return null;
+        if (_running != null && CurrentPrompt?.Kind is not (PromptKind.Select or PromptKind.Face)) return null;
         var hit = Solid3D.Raycast(Document, origin, direction);
+        if (CurrentPrompt?.Kind == PromptKind.Face)
+        {
+            if (hit is { } h) PickFace(h.Id, h.Point, h.Normal);
+            return hit;
+        }
         PickObject(hit?.Id, additive);
         return hit;
     }
@@ -224,6 +231,31 @@ public sealed partial class CommandEngine
         if (_running != null && CurrentPrompt is { Single: true } && Selection.Count > 0) { Feed(new Input.EndInput()); return; }
         Raise();
     }
+
+    /// <summary>Answers a face prompt (UCS Face) with a face picked by a viewer.</summary>
+    public void PickFace(Guid solid, Vec3 point, Vec3 normal)
+    {
+        if (CurrentPrompt?.Kind != PromptKind.Face || normal.LengthSquared < 1e-18) return;
+        Print($"{CurrentPrompt.Display} face of {Document.Solids.FirstOrDefault(s => s.Id == solid)?.Name ?? "solid"}");
+        Feed(new Input.FaceInput(solid, point, normal.Normalized()));
+    }
+
+    /// <summary>Switches the 2D view between model space, a work plane and a layout (null = model).</summary>
+    public void SetSpace(string? key)
+    {
+        if (key != null && !Document.Planes.ContainsKey(key) && !Document.Layouts.ContainsKey(key)) return;
+        if (Document.ActiveSpace == key) return;
+        Cancel(silent: true);
+        Selection.Clear();
+        Document.ActiveSpace = key;
+        Document.Touch();
+        Print($"Space: {SpaceName(key)}");
+        RequestView("zoom-extents");
+        Raise();
+    }
+
+    public string SpaceName(string? key) =>
+        key is null ? "Model" : Document.Planes.TryGetValue(key, out var p) ? p.Name : Document.Layouts.TryGetValue(key, out var l) ? l.Name : key;
 
     /// <summary>Selected solids (the gizmo acts on these).</summary>
     public IReadOnlyList<Guid> SelectedSolidIds => [.. Document.Solids.Where(s => Selection.Contains(s.Id)).Select(s => s.Id)];
@@ -259,6 +291,17 @@ public sealed partial class CommandEngine
         int n = Solid3D.Transform(Document, ids, m, "Scale 3D");
         if (n > 0) Print($"Scaled {n} solid(s) ×{factor:0.###}");
         Raise();
+    }
+
+    private (StudioDocument?, int, string?) _refKey;
+    private List<(DrawingEntity Geometry, string Color)> _ref = [];
+
+    /// <summary>Reference geometry of the active space, cached per document version.</summary>
+    public IReadOnlyList<(DrawingEntity Geometry, string Color)> ReferenceGeometry()
+    {
+        var key = (Document, Document.Version, Document.ActiveSpace);
+        if (key != _refKey) { _ref = Spaces.Reference(Document); _refKey = key; }
+        return _ref;
     }
 
     // ===================================================================== grips
@@ -357,7 +400,7 @@ public sealed partial class CommandEngine
             var pts = Geometry2D.Polyline(e.Geometry, 0.5);
             if (crossing ? pts.Any(In) || Geometry2D.Segments(e.Geometry).Any(s => CrossesBox(s.A, s.B, min, max)) : pts.All(In)) Selection.Add(e.Id);
         }
-        foreach (var s in Document.VisibleSolids)
+        foreach (var s in Document.ActiveSpace is null ? Document.VisibleSolids : [])
         {
             var bb = s.Mesh.Bounds;
             var lo = bb.Min.XY; var hi = bb.Max.XY;
@@ -577,11 +620,12 @@ public sealed partial class CommandEngine
             var d = Geometry2D.Distance(e.Geometry, world);
             if (d <= bd) { bd = d; best = e.Id; }
         }
-        foreach (var s in Document.VisibleSolids)
-        {
-            var d = Geometry2D.Distance(s.PlanOutline, world);
-            if (d <= bd) { bd = d; best = s.Id; }
-        }
+        if (Document.ActiveSpace is null)
+            foreach (var s in Document.VisibleSolids)
+            {
+                var d = Geometry2D.Distance(s.PlanOutline, world);
+                if (d <= bd) { bd = d; best = s.Id; }
+            }
         return best;
     }
 
@@ -610,12 +654,20 @@ public sealed partial class CommandEngine
                     if (d <= bd) { bd = d; result = new SnapResult(p, k); }
                 }
             }
-            foreach (var s in Document.VisibleSolids)
+            foreach (var s in Document.ActiveSpace is null ? Document.VisibleSolids : [])
                 foreach (var (a, b) in s.PlanOutline)
                     foreach (var p in new[] { a, b })
                     {
                         double d = Vec2.Distance(p, cursor);
                         if (d <= bd) { bd = d; result = new SnapResult(p, SnapKind.Endpoint); }
+                    }
+            // reference geometry (face outline on a work plane) snaps to its ends and midpoints
+            if (Document.ActivePlane is not null)
+                foreach (var (g, _) in ReferenceGeometry())
+                    foreach (var (p, k) in Geometry2D.SnapPoints(g))
+                    {
+                        double d = Vec2.Distance(p, cursor) * (k == SnapKind.Midpoint ? 1.15 : 1);
+                        if (d <= bd) { bd = d; result = new SnapResult(p, k); }
                     }
             if (result.Kind == SnapKind.None && near.Count is > 1 and < 40)
             {

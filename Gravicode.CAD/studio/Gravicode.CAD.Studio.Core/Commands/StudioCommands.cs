@@ -72,6 +72,7 @@ public static partial class StudioCommands
         R("AI", ["TEXT2CAD", "GENERATE"], "AI", "Creates a part from a description (Claude when ANTHROPIC_API_KEY is set, offline otherwise)", Ai);
         R("HELP", ["?"], "Utility", "Lists commands", Help);
         RegisterDrafting(e);
+        RegisterSpaces(e);
     }
 
     // ===================================================================== helpers
@@ -557,6 +558,26 @@ public static partial class StudioCommands
         var profiles = Profile2.FromLoops(loops);
         var ids = c.SelectedEntities.Select(e => e.Id).ToHashSet();
         var meshes = profiles.Select(p => { var m = Shapes.Extrude(p, Math.Abs(h)); return h < 0 ? m.Translated(0, 0, h) : m; }).ToList();
+        // on a work plane the profile sits on the face: positive heights add to that solid, negative heights cut it
+        if (c.Doc.ActivePlane is { } plane)
+        {
+            meshes = [.. meshes.Select(m => m.Transformed(plane.Matrix))];
+            var target = plane.SolidId is { } sid ? c.Doc.Solids.FirstOrDefault(s => s.Id == sid) : null;
+            if (target != null)
+            {
+                var tool = meshes.Count == 1 ? meshes[0] : Csg.UnionAll(meshes);
+                var result = h > 0 ? Csg.Union(target.Mesh, tool) : Csg.Subtract(target.Mesh, tool);
+                c.Doc.Edit(h > 0 ? "Extrude onto face" : "Cut into face", d =>
+                {
+                    d.Entities.RemoveAll(e => ids.Contains(e.Id));
+                    int i = d.Solids.FindIndex(s => s.Id == target.Id);
+                    if (i >= 0) d.Solids[i] = WithMesh(target, result);
+                });
+                c.Engine.Selection.Clear();
+                c.Print($"  {(h > 0 ? "Added to" : "Cut into")} {target.Name}: volume {result.Volume.ToString("N1", Inv)}");
+                yield break;
+            }
+        }
         c.Doc.Edit("Extrude", d =>
         {
             d.Entities.RemoveAll(e => ids.Contains(e.Id));

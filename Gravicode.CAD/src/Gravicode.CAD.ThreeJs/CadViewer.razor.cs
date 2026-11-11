@@ -5,8 +5,8 @@ using Microsoft.JSInterop;
 namespace Gravicode.CAD.ThreeJs;
 
 /// <summary>A click in the viewer: the body index (in model order, visible non-empty bodies) or -1 for empty space,
-/// the hit point (CAD space) and whether Shift/Ctrl was held.</summary>
-public sealed record CadPickEventArgs(int BodyIndex, Vec3 Point, bool Additive);
+/// the hit point and the face normal there (CAD space), and whether Shift/Ctrl was held.</summary>
+public sealed record CadPickEventArgs(int BodyIndex, Vec3 Point, bool Additive, Vec3 Normal = default);
 
 /// <summary>A finished gizmo drag: <c>"move"</c> with <see cref="Delta"/>, <c>"rotate"</c> by <see cref="Angle"/>
 /// radians about <see cref="Axis"/>, or <c>"scale"</c> by <see cref="Factor"/> (uniform) — about <see cref="Pivot"/>, CAD space.</summary>
@@ -58,8 +58,8 @@ public partial class CadViewer : ComponentBase
     private string? _interactionKey;
 
     [JSInvokable]
-    public Task OnPickFromJs(int body, double x, double y, double z, bool additive) =>
-        OnPick.InvokeAsync(new CadPickEventArgs(body, new Vec3(x, y, z), additive));
+    public Task OnPickFromJs(int body, double x, double y, double z, bool additive, double nx, double ny, double nz) =>
+        OnPick.InvokeAsync(new CadPickEventArgs(body, new Vec3(x, y, z), additive, new Vec3(nx, ny, nz)));
 
     [JSInvokable]
     public Task OnGizmoFromJs(string mode, double dx, double dy, double dz, double ax, double ay, double az, double angle, double px, double py, double pz, double factor) =>

@@ -49,6 +49,7 @@
         <Grid x:Name="Viewport" Grid.Column="1" ColumnDefinitions="*,1,*" Background="{StaticResource PaperBrush}">
           <Panel x:Name="Pane2D" Grid.Column="0">
             <c:BlueprintCanvas x:Name="Canvas" />
+            <WrapPanel x:Name="SpaceBar" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="30,0,30,8" />
             <TextBlock x:Name="Tag2D" Text="TOP · MODEL" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,28,12,0" IsHitTestVisible="False"
                        FontFamily="{StaticResource LabelFont}" FontWeight="SemiBold" FontSize="11.5" LetterSpacing="2.4" Foreground="#8CE6EDF3" />
           </Panel>

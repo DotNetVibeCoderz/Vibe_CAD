@@ -1,7 +1,7 @@
 namespace Gravicode.CAD.Studio;
 
 /// <summary>A picked solid: its id, the distance along the ray and the hit point (CAD space, Z-up).</summary>
-public readonly record struct SolidHit(Guid Id, double Distance, Vec3 Point);
+public readonly record struct SolidHit(Guid Id, double Distance, Vec3 Point, Vec3 Normal);
 
 /// <summary>3D selection and gizmo maths shared by the web and desktop viewports (CAD space, Z-up).</summary>
 public static class Solid3D
@@ -20,7 +20,7 @@ public static class Solid3D
             var pos = s.Mesh.Positions; var idx = s.Mesh.Indices;
             for (int i = 0; i + 2 < idx.Count; i += 3)
                 if (RayTriangle(origin, d, pos[idx[i]], pos[idx[i + 1]], pos[idx[i + 2]], out double t) && (best is null || t < best.Value.Distance))
-                    best = new SolidHit(s.Id, t, origin + d * t);
+                    best = new SolidHit(s.Id, t, origin + d * t, Vec3.Cross(pos[idx[i + 1]] - pos[idx[i]], pos[idx[i + 2]] - pos[idx[i]]).Normalized());
         }
         return best;
     }

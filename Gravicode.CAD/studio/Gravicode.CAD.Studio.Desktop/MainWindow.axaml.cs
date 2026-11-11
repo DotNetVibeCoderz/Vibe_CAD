@@ -191,8 +191,36 @@ public partial class MainWindow : Window
         UpdateStatus();
         string key = $"{Doc.GetHashCode()}|{Doc.Version}|{string.Join(",", _engine.Selection)}|{_id}|{Doc.CurrentLayer}";
         if (key != _panelKey) { _panelKey = key; BuildLeftPanel(); BuildRightPanel(); }
+        UpdateSpaceBar();
         Update3D();
         UpdateGizmo();
+    }
+
+    private string _spaceKey = "";
+
+    /// <summary>MODEL / face planes / layouts under the 2D view.</summary>
+    private void UpdateSpaceBar()
+    {
+        var key = $"{Doc.GetHashCode()}|{Doc.ActiveSpace}|{string.Join(",", Doc.Planes.Keys)}|{string.Join(",", Doc.Layouts.Values.Select(l => l.Name))}|{_id}";
+        Tag2D.Text = Doc.ActiveSpace is null ? T("TOP · MODEL", "ATAS · MODEL") : _engine.SpaceName(Doc.ActiveSpace).ToUpperInvariant();
+        if (key == _spaceKey) return;
+        _spaceKey = key;
+        SpaceBar.Children.Clear();
+        Button Tab(string label, string? space, string tip)
+        {
+            var b = new Button { Content = label, Classes = { "chip" }, Margin = new(0, 0, 2, 2) };
+            if (Doc.ActiveSpace == space) b.Classes.Add("on");
+            ToolTip.SetTip(b, tip);
+            b.Click += (_, _) => _engine.SetSpace(space);
+            return b;
+        }
+        SpaceBar.Children.Add(Tab(T("MODEL", "MODEL"), null, T("Model space", "Ruang model")));
+        foreach (var p in Doc.Planes.Values) SpaceBar.Children.Add(Tab("◇ " + p.Name, p.Key, T("Sketch on this face", "Gambar di permukaan ini")));
+        foreach (var l in Doc.Layouts.Values) SpaceBar.Children.Add(Tab("▭ " + l.Name, l.Key, $"{l.Paper} {(l.Landscape ? "landscape" : "portrait")}"));
+        var add = new Button { Content = "+ LAYOUT", Classes = { "chip" }, Margin = new(0, 0, 2, 2) };
+        ToolTip.SetTip(add, T("New paper-space layout", "Layout kertas baru"));
+        add.Click += (_, _) => Run("LAYOUT New");
+        SpaceBar.Children.Add(add);
     }
 
     // ================================================================== 3D picking & gizmo

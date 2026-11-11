@@ -37,6 +37,7 @@ public static class StudioRibbon
         [
             new("Viewport", [B("Plan", "app:view-2d", "plan", "2D drafting view", true), B("Split", "app:view-split", "split", "2D + 3D side by side", true), B("3D", "app:view-3d", "cube3d", "3D model view", true), B("Extents", "ZOOM", "zoom", "Zoom extents (Z)")]),
             new("Aids", [B("Ortho", "ORTHO", "ortho", "Ortho mode (F8)"), B("Snap", "GRID", "grid", "Grid snap (F9)"), B("OSnap", "OSNAP", "osnap", "Object snap (F3)")]),
+            new("Work plane", [B("Sketch on face", "UCS Face", "ucs", "Pick a face in 3D and draw on it (UCS)", true), B("Model", "MODEL", "plan", "Back to model space (MODEL)")]),
         ]),
         new("AI", "AI",
         [
@@ -46,6 +47,7 @@ public static class StudioRibbon
         [
             new("File", [B("New", "app:new", "new", "Start screen", true), B("Open", "app:open", "open", "Open .gcproj or any CAD file", true), B("Save", "app:save", "save", "Save project (.gcproj)", true)]),
             new("Plot", [B("Plot", "PLOT", "plot", "Plot to a PDF/SVG sheet with scale and title block (PLOT)", true)]),
+            new("Paper space", [B("Layout", "LAYOUT New", "layout", "New paper-space layout (LAYOUT)", true), B("Viewport", "MVIEW", "mview", "Add a viewport to the layout (MVIEW)")]),
             new("Export", [B("STEP", "app:export:step", "export", "STEP AP214"), B("STL", "app:export:stl", "export", "Binary STL"), B("glTF", "app:export:glb", "export", "glTF binary"), B("3MF", "app:export:3mf", "export", "3MF"),
                            B("DXF", "app:export:dxf", "export", "AutoCAD DXF"), B("PDF", "app:export:pdf", "export", "PDF drawing"), B("SVG", "app:export:svg", "export", "SVG"), B("PNG", "app:export:png", "export", "Rendered image")]),
         ]),
@@ -115,6 +117,9 @@ public static class StudioRibbon
         ["hatch"] = "M4 4 H20 V20 H4 Z M4 10 L10 4 M4 16 L16 4 M8 20 L20 8 M14 20 L20 14",
         ["block"] = "M4 4 H11 V11 H4 Z M13 4 H20 V11 H13 Z M4 13 H11 V20 H4 Z M13 13 H20 V20 H13 Z",
         ["insert"] = "M12 3 V14 M8 10 L12 14 L16 10 M5 15 H19 V21 H5 Z",
+        ["ucs"] = "M4 18 L12 14 L20 18 L12 22 Z M12 14 V4 M9 7 L12 4 L15 7 M4 18 V12 M20 18 V12",
+        ["layout"] = "M3 4 H21 V20 H3 Z M6 7 H14 V14 H6 Z M16 16 H19 V18 H16 Z",
+        ["mview"] = "M3 4 H21 V20 H3 Z M7 8 H17 V16 H7 Z M7 8 L17 16",
         ["plot"] = "M6 9 V3 H18 V9 M6 17 H4 V9 H20 V17 H18 M6 14 H18 V21 H6 Z",
     };
 }

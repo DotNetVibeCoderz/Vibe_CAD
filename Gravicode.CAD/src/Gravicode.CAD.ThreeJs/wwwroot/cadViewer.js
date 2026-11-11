@@ -304,7 +304,8 @@ class CadViewer {
     this.content.traverse(o => { if (o.isMesh && o.userData.body !== undefined) meshes.push(o); });
     const hit = this.#ray(e).intersectObjects(meshes, false)[0];
     const pt = hit?.point;
-    this.dotnet.invokeMethodAsync('OnPickFromJs', hit ? hit.object.userData.body : -1, pt?.x ?? 0, pt?.y ?? 0, pt?.z ?? 0, e.shiftKey || e.ctrlKey);
+    const n = hit?.face ? hit.face.normal.clone().transformDirection(hit.object.matrixWorld) : null;
+    this.dotnet.invokeMethodAsync('OnPickFromJs', hit ? hit.object.userData.body : -1, pt?.x ?? 0, pt?.y ?? 0, pt?.z ?? 0, e.shiftKey || e.ctrlKey, n?.x ?? 0, n?.y ?? 0, n?.z ?? 0);
   }
 
   #buildHelpers() {

@@ -1,6 +1,6 @@
 namespace Gravicode.CAD.Studio.Commands;
 
-public enum PromptKind { Point, Distance, Integer, Text, Select, Keyword }
+public enum PromptKind { Point, Distance, Integer, Text, Select, Keyword, Face }
 
 /// <summary>What a running command asks the user for next.</summary>
 public sealed record Prompt(PromptKind Kind, string Message)
@@ -37,6 +37,8 @@ public sealed record Prompt(PromptKind Kind, string Message)
     /// <summary>Pick a spot on an object (no snapping); Enter finishes.</summary>
     public static Prompt Pick(string msg, Func<Vec2, IEnumerable<DrawingEntity>>? preview = null, params string[] keywords) =>
         new(PromptKind.Point, msg) { NoSnap = true, AllowEnd = true, Keywords = keywords, Preview = preview };
+    /// <summary>Click a face of a solid in a 3D view.</summary>
+    public static Prompt Face(string msg) => new(PromptKind.Face, msg) { AllowEnd = true };
     public static Prompt Integer(string msg, int def) => new(PromptKind.Integer, msg) { Default = def };
     public static Prompt Text(string msg) => new(PromptKind.Text, msg);
     public static Prompt Select(string msg = "Select objects") => new(PromptKind.Select, msg) { AllowEnd = true };
@@ -50,6 +52,8 @@ public abstract record Input
     public sealed record NumberInput(double Value) : Input;
     public sealed record TextInput(string Value) : Input;
     public sealed record KeywordInput(string Value) : Input;
+    /// <summary>A face picked in a 3D view: the solid, the hit point and the outward normal (CAD space).</summary>
+    public sealed record FaceInput(Guid Solid, Vec3 Point, Vec3 Normal) : Input;
     /// <summary>Enter / right click.</summary>
     public sealed record EndInput : Input;
 }
