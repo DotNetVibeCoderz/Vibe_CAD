@@ -84,7 +84,7 @@ public static class Solid3D
                 if (set.Contains(d.Solids[i].Id))
                 {
                     var s = d.Solids[i];
-                    d.Solids[i] = new StudioSolid(s.Id, s.Name, s.Layer, s.Mesh.Transformed(m), s.Color, s.Metallic, s.Roughness);
+                    d.Solids[i] = s.WithMesh(s.Mesh.Transformed(m), s.History is { } h ? Feature.Transform(m, h) : null);
                 }
         });
         return n;

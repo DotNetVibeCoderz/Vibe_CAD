@@ -87,11 +87,14 @@ public static partial class StudioCommands
         return created;
     }
 
-    private static StudioSolid AddSolid(CommandContext c, string name, Mesh mesh, string label)
+    private static StudioSolid AddSolid(CommandContext c, string name, Feature feature, string label) =>
+        AddSolid(c, name, Features.Evaluate(feature), label, feature);
+
+    private static StudioSolid AddSolid(CommandContext c, string name, Mesh mesh, string label, Feature? history = null)
     {
         StudioSolid? created = null;
         var color = c.EntityColor ?? SolidColors[c.Doc.Solids.Count % SolidColors.Length];
-        c.Doc.Edit(label, d => created = d.AddSolid(name, mesh, color));
+        c.Doc.Edit(label, d => created = d.AddSolid(name, mesh, color, history: history));
         c.Engine.LastCreated = created!.Id;
         c.Print($"  {name}: volume {mesh.Volume.ToString("N1", Inv)} {c.Doc.Units.Symbol()}³");
         return created;
@@ -99,7 +102,14 @@ public static partial class StudioCommands
 
     private static readonly string[] SolidColors = ["#9AA7B4", "#4F8DF7", "#F39C4A", "#D4A84B", "#6CC7A3", "#C8734A", "#B794F4"];
 
-    private static StudioSolid WithMesh(StudioSolid s, Mesh m) => new(s.Id, s.Name, s.Layer, m, s.Color, s.Metallic, s.Roughness);
+    private static StudioSolid WithMesh(StudioSolid s, Mesh m, Feature? history) => s.WithMesh(m, history);
+
+    /// <summary>Combined history of solids when every one of them has a history.</summary>
+    private static Feature? Combined(string op, IEnumerable<StudioSolid> solids)
+    {
+        var list = solids.ToList();
+        return list.All(s => s.History is not null) ? Feature.Combine(op, list.Select(s => s.History!)) : null;
+    }
 
     /// <summary>Applies a 2D transform to entities and the matching 3D transform to solids.</summary>
     private static void ApplyTransform(StudioDocument d, HashSet<Guid> ids, Func<Vec2, Vec2> map2, Mat4 m3, bool copy, CommandEngine engine)
@@ -118,8 +128,9 @@ public static partial class StudioCommands
             var s = d.Solids[i];
             if (!ids.Contains(s.Id)) continue;
             var mesh = s.Mesh.Transformed(m3);
-            if (copy) { var ns = StudioSolid.Create(s.Name + " copy", s.Layer, mesh, s.Color, s.Metallic, s.Roughness); d.Solids.Add(ns); newIds.Add(ns.Id); }
-            else d.Solids[i] = WithMesh(s, mesh);
+            var history = s.History is { } h ? Feature.Transform(m3, h) : null;
+            if (copy) { var ns = StudioSolid.Create(s.Name + " copy", s.Layer, mesh, s.Color, s.Metallic, s.Roughness, history); d.Solids.Add(ns); newIds.Add(ns.Id); }
+            else d.Solids[i] = WithMesh(s, mesh, history);
         }
         if (newIds.Count > 0) engine.LastCreated = newIds[^1];
     }
@@ -484,8 +495,7 @@ public static partial class StudioCommands
         double h = c.IsEnd ? 20 : DistOf(c, b);
         double w = Math.Abs(b.X - a.X), dpt = Math.Abs(b.Y - a.Y);
         if (w < 1e-9 || dpt < 1e-9 || h <= 0) { c.Print("  Box needs a non-zero size."); yield break; }
-        var mesh = Shapes.Box(w, dpt, h, false).Translated(Math.Min(a.X, b.X), Math.Min(a.Y, b.Y), 0);
-        AddSolid(c, "Box", mesh, "Box");
+        AddSolid(c, "Box", Feature.Leaf("box", ("x", Math.Min(a.X, b.X)), ("y", Math.Min(a.Y, b.Y)), ("z", 0), ("width", w), ("depth", dpt), ("height", h)), "Box");
     }
 
     private static IEnumerable<Prompt> Cylinder(CommandContext c)
@@ -496,7 +506,7 @@ public static partial class StudioCommands
         double r = DistOf(c, ctr);
         yield return Prompt.Distance("Specify height", ctr, 20);
         double h = c.IsEnd ? 20 : DistOf(c, ctr);
-        if (r > 0 && h > 0) AddSolid(c, "Cylinder", Shapes.Cylinder(r, h).Translated(ctr.X, ctr.Y, 0), "Cylinder");
+        if (r > 0 && h > 0) AddSolid(c, "Cylinder", Feature.Leaf("cylinder", ("x", ctr.X), ("y", ctr.Y), ("z", 0), ("radius", r), ("height", h)), "Cylinder");
     }
 
     private static IEnumerable<Prompt> Cone(CommandContext c)
@@ -509,7 +519,7 @@ public static partial class StudioCommands
         double rt = c.IsEnd ? 0 : c.Number;
         yield return Prompt.Distance("Specify height", ctr, 30);
         double h = c.IsEnd ? 30 : DistOf(c, ctr);
-        if (r > 0 && h > 0) AddSolid(c, "Cone", Shapes.Cone(r, rt, h).Translated(ctr.X, ctr.Y, 0), "Cone");
+        if (r > 0 && h > 0) AddSolid(c, "Cone", Feature.Leaf("cone", ("x", ctr.X), ("y", ctr.Y), ("z", 0), ("radius", r), ("top radius", rt), ("height", h)), "Cone");
     }
 
     private static IEnumerable<Prompt> Sphere(CommandContext c)
@@ -518,7 +528,7 @@ public static partial class StudioCommands
         var ctr = c.Point;
         yield return Prompt.Distance("Specify radius", ctr, preview: p => [new CircleEntity(ctr, Math.Max(Vec2.Distance(ctr, p), 1e-6))]);
         double r = DistOf(c, ctr);
-        if (r > 0) AddSolid(c, "Sphere", Shapes.Sphere(r).Translated(ctr.X, ctr.Y, r), "Sphere");
+        if (r > 0) AddSolid(c, "Sphere", Feature.Leaf("sphere", ("x", ctr.X), ("y", ctr.Y), ("z", 0), ("radius", r)), "Sphere");
     }
 
     private static IEnumerable<Prompt> Torus(CommandContext c)
@@ -529,7 +539,7 @@ public static partial class StudioCommands
         double R = DistOf(c, ctr);
         yield return Prompt.Distance("Specify tube radius", null, R / 5);
         double r = c.IsEnd ? R / 5 : c.Number;
-        if (R > 0 && r > 0 && r < R) AddSolid(c, "Torus", Shapes.Torus(R, r).Translated(ctr.X, ctr.Y, r), "Torus");
+        if (R > 0 && r > 0 && r < R) AddSolid(c, "Torus", Feature.Leaf("torus", ("x", ctr.X), ("y", ctr.Y), ("z", 0), ("radius", R), ("tube", r)), "Torus");
     }
 
     private static IEnumerable<Prompt> Gear(CommandContext c)
@@ -544,7 +554,7 @@ public static partial class StudioCommands
         double w = c.IsEnd ? 10 : c.Number;
         yield return Prompt.Distance("Enter bore diameter", null, Math.Round(m * z / 5));
         double bore = c.IsEnd ? Math.Round(m * z / 5) : c.Number;
-        AddSolid(c, $"Gear m{m} z{z}", Shapes.SpurGear(m, z, w, bore).Translated(ctr.X, ctr.Y, 0), "Gear");
+        AddSolid(c, $"Gear m{m} z{z}", Feature.Leaf("gear", ("x", ctr.X), ("y", ctr.Y), ("z", 0), ("module", m), ("teeth", z), ("width", w), ("bore", bore)), "Gear");
     }
 
     private static IEnumerable<Prompt> Extrude(CommandContext c)
@@ -557,21 +567,25 @@ public static partial class StudioCommands
         if (Math.Abs(h) < 1e-9) yield break;
         var profiles = Profile2.FromLoops(loops);
         var ids = c.SelectedEntities.Select(e => e.Id).ToHashSet();
-        var meshes = profiles.Select(p => { var m = Shapes.Extrude(p, Math.Abs(h)); return h < 0 ? m.Translated(0, 0, h) : m; }).ToList();
+        var feats = profiles.Select(p => new Feature("extrude", [new FeatureParam("height", h)], [],
+            [p.Outer.Points, .. p.Holes.Select(x => (IReadOnlyList<Vec2>)x.Points)])).ToList();
+        var meshes = feats.Select(Features.Evaluate).ToList();
         // on a work plane the profile sits on the face: positive heights add to that solid, negative heights cut it
         if (c.Doc.ActivePlane is { } plane)
         {
             meshes = [.. meshes.Select(m => m.Transformed(plane.Matrix))];
+            feats = [.. feats.Select(f => Feature.Transform(plane.Matrix, f))];
             var target = plane.SolidId is { } sid ? c.Doc.Solids.FirstOrDefault(s => s.Id == sid) : null;
             if (target != null)
             {
                 var tool = meshes.Count == 1 ? meshes[0] : Csg.UnionAll(meshes);
                 var result = h > 0 ? Csg.Union(target.Mesh, tool) : Csg.Subtract(target.Mesh, tool);
+                Feature? history = target.History is { } th ? Feature.Combine(h > 0 ? "union" : "subtract", [th, .. feats]) : null;
                 c.Doc.Edit(h > 0 ? "Extrude onto face" : "Cut into face", d =>
                 {
                     d.Entities.RemoveAll(e => ids.Contains(e.Id));
                     int i = d.Solids.FindIndex(s => s.Id == target.Id);
-                    if (i >= 0) d.Solids[i] = WithMesh(target, result);
+                    if (i >= 0) d.Solids[i] = WithMesh(target, result, history);
                 });
                 c.Engine.Selection.Clear();
                 c.Print($"  {(h > 0 ? "Added to" : "Cut into")} {target.Name}: volume {result.Volume.ToString("N1", Inv)}");
@@ -581,7 +595,7 @@ public static partial class StudioCommands
         c.Doc.Edit("Extrude", d =>
         {
             d.Entities.RemoveAll(e => ids.Contains(e.Id));
-            foreach (var m in meshes) { var s = d.AddSolid("Extrusion", m, c.EntityColor ?? SolidColors[d.Solids.Count % SolidColors.Length]); c.Engine.LastCreated = s.Id; }
+            for (int k = 0; k < meshes.Count; k++) { var s = d.AddSolid("Extrusion", meshes[k], c.EntityColor ?? SolidColors[d.Solids.Count % SolidColors.Length], history: feats[k]); c.Engine.LastCreated = s.Id; }
         });
         c.Engine.Selection.Clear();
         c.Print($"  {meshes.Count} solid(s) created ({profiles.Sum(p => p.Holes.Count)} hole(s)).");
@@ -599,8 +613,9 @@ public static partial class StudioCommands
         double axisX = loop.Points.Min(p => p.X);
         var profile = loop.Points.Select(p => new Vec2(p.X - axisX, p.Y)).ToList();
         double y0 = profile.Min(p => p.Y);
-        var mesh = Shapes.Revolve([.. profile.Select(p => new Vec2(p.X, p.Y - y0))], ang).Translated(axisX, (loop.Points.Max(p => p.Y) + y0) / 2, 0);
-        AddSolid(c, "Revolution", mesh, "Revolve");
+        var leaf = new Feature("revolve", [new FeatureParam("angle", ang)], [], [[.. profile.Select(p => new Vec2(p.X, p.Y - y0))]]);
+        var placed = Feature.Transform(Mat4.Translate(axisX, (loop.Points.Max(p => p.Y) + y0) / 2, 0), leaf);
+        AddSolid(c, "Revolution", placed, "Revolve");
     }
 
     private static IEnumerable<Prompt> Boolean(CommandContext c, string op)
@@ -615,7 +630,7 @@ public static partial class StudioCommands
         {
             var ids = solids.Select(s => s.Id).ToHashSet();
             d.Solids.RemoveAll(s => ids.Contains(s.Id));
-            d.Solids.Add(WithMesh(keep, mesh));
+            d.Solids.Add(WithMesh(keep, mesh, Combined(op == "Union" ? "union" : "intersect", solids)));
         });
         c.Engine.Selection.Clear();
         c.Print($"  {op}: {solids.Count} solids → volume {mesh.Volume.ToString("N1", Inv)}");
@@ -632,7 +647,7 @@ public static partial class StudioCommands
         var tools = c.SelectedSolids.Where(t => bases.All(b => b.Id != t.Id)).ToList();
         if (tools.Count == 0) yield break;
         var toolMesh = tools.Count == 1 ? tools[0].Mesh : Csg.UnionAll(tools.Select(t => t.Mesh));
-        var results = bases.Select(b => WithMesh(b, Csg.Subtract(b.Mesh, toolMesh))).ToList();
+        var results = bases.Select(b => WithMesh(b, Csg.Subtract(b.Mesh, toolMesh), Combined("subtract", [b, .. tools]))).ToList();
         c.Doc.Edit("Subtract", d =>
         {
             var ids = bases.Concat(tools).Select(s => s.Id).ToHashSet();
@@ -649,7 +664,8 @@ public static partial class StudioCommands
         yield return Prompt.Distance("Specify Z offset", null, 10);
         double dz = c.IsEnd ? 10 : c.Number;
         var ids = c.SelectedSolids.Select(s => s.Id).ToHashSet();
-        c.Doc.Edit("Elevate", d => { for (int i = 0; i < d.Solids.Count; i++) if (ids.Contains(d.Solids[i].Id)) d.Solids[i] = WithMesh(d.Solids[i], d.Solids[i].Mesh.Translated(0, 0, dz)); });
+        var lift = Mat4.Translate(0, 0, dz);
+        c.Doc.Edit("Elevate", d => { for (int i = 0; i < d.Solids.Count; i++) if (ids.Contains(d.Solids[i].Id)) { var s = d.Solids[i]; d.Solids[i] = WithMesh(s, s.Mesh.Transformed(lift), s.History is { } h ? Feature.Transform(lift, h) : null); } });
     }
 
     // ===================================================================== inquiry
@@ -759,7 +775,7 @@ public static partial class StudioCommands
             {
                 for (int i = 0; i < d.Entities.Count; i++) if (ids.Contains(d.Entities[i].Id)) d.Entities[i] = d.Entities[i] with { Color = byLayer ? null : col };
                 for (int i = 0; i < d.Solids.Count; i++) if (ids.Contains(d.Solids[i].Id) && !byLayer)
-                    { var s = d.Solids[i]; d.Solids[i] = new StudioSolid(s.Id, s.Name, s.Layer, s.Mesh, col, s.Metallic, s.Roughness); }
+                    { var s = d.Solids[i]; d.Solids[i] = s with { Color = col }; }
             });
         }
         else c.Settings.CurrentColor = byLayer ? "ByLayer" : col;

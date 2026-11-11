@@ -129,6 +129,13 @@ code { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
 .props input:not([type]), .props input[type=text], .props select { width: 100%; background: var(--g-800); border: 1px solid var(--g-600); border-radius: 3px; padding: 3px 6px; }
 .props input[type=range] { width: 100%; accent-color: var(--select); }
 .props__sub { margin: 14px 12px 6px; font: 600 12px/1 var(--f-label); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); border-top: 1px solid var(--g-700); padding-top: 12px; }
+.history__tree { margin: 0 12px 6px; font: 11.5px/1.5 var(--f-mono); color: var(--muted); word-break: break-word; }
+.history { list-style: none; margin: 0 12px 12px !important; padding: 0 !important; }
+.history li { display: grid; grid-template-columns: 1fr 86px; gap: 6px; align-items: center; margin-bottom: 4px; }
+.history label { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history label b { color: var(--text); font-weight: 600; }
+.history input { width: 100%; background: var(--g-800); border: 1px solid var(--g-600); border-radius: 3px; padding: 2px 6px; font: 12px var(--f-mono); }
+.history input:focus { border-color: var(--select); outline: none; }
 .props__desc { margin: 4px 12px 10px; font: 12.5px/1.5 var(--f-mono); color: var(--text); }
 .link { background: none; border: 0; color: var(--select); font-size: 12px; padding: 0; }
 .quick { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 12px; }

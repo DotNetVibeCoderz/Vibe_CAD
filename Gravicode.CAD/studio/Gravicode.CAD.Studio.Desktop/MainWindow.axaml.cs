@@ -694,11 +694,11 @@ public partial class MainWindow : Window
             var p = s.Mesh.Properties; var bb = s.Mesh.Bounds;
             var props = Props();
             Prop(props, T("Type", "Tipe"), new TextBlock { Text = "Solid" });
-            Prop(props, T("Name", "Nama"), Field(s.Name, v => ReplaceSolid(s, new StudioSolid(s.Id, v, s.Layer, s.Mesh, s.Color, s.Metallic, s.Roughness))));
-            Prop(props, "Layer", LayerCombo(s.Layer, v => ReplaceSolid(s, new StudioSolid(s.Id, s.Name, v, s.Mesh, s.Color, s.Metallic, s.Roughness))));
-            Prop(props, T("Colour", "Warna"), ColorRow(s.Color, v => ReplaceSolid(s, new StudioSolid(s.Id, s.Name, s.Layer, s.Mesh, v, s.Metallic, s.Roughness))));
-            Prop(props, T("Metallic", "Metalik"), SliderFor(s.Metallic, 0, 1, v => ReplaceSolid(s, new StudioSolid(s.Id, s.Name, s.Layer, s.Mesh, s.Color, v, s.Roughness))));
-            Prop(props, T("Roughness", "Kekasaran"), SliderFor(s.Roughness, 0.05, 1, v => ReplaceSolid(s, new StudioSolid(s.Id, s.Name, s.Layer, s.Mesh, s.Color, s.Metallic, v))));
+            Prop(props, T("Name", "Nama"), Field(s.Name, v => ReplaceSolid(s, s with { Name = v })));
+            Prop(props, "Layer", LayerCombo(s.Layer, v => ReplaceSolid(s, s with { Layer = v })));
+            Prop(props, T("Colour", "Warna"), ColorRow(s.Color, v => ReplaceSolid(s, s with { Color = v })));
+            Prop(props, T("Metallic", "Metalik"), SliderFor(s.Metallic, 0, 1, v => ReplaceSolid(s, s with { Metallic = v })));
+            Prop(props, T("Roughness", "Kekasaran"), SliderFor(s.Roughness, 0.05, 1, v => ReplaceSolid(s, s with { Roughness = v })));
             RightPanel.Children.Add(props);
             RightPanel.Children.Add(SubHead(T("Mass properties", "Properti massa")));
             var num = Props();
@@ -710,6 +710,29 @@ public partial class MainWindow : Window
             Prop(num, T("Triangles", "Segitiga"), Mono(s.Mesh.TriangleCount.ToString("N0")));
             Prop(num, T("Steel", "Baja"), Mono($"{p.Volume * 7.85e-3:N0} g"));
             RightPanel.Children.Add(num);
+            RightPanel.Children.Add(SubHead(T("History", "Histori")));
+            if (s.History is { } tree)
+            {
+                RightPanel.Children.Add(new TextBlock { Text = Features.Describe(tree), Classes = { "mono", "muted" }, FontSize = 11.5, TextWrapping = TextWrapping.Wrap, Margin = new(12, 0, 12, 6) });
+                var entries = Features.Parameters(tree);
+                var grid = new Grid { ColumnDefinitions = new("*,86"), Margin = new(12, 0, 12, 10) };
+                for (int i = 0; i < entries.Count; i++)
+                {
+                    int index = i; var en = entries[i];
+                    grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+                    var label = new TextBlock { Margin = new(en.Depth * 10, 3, 6, 3), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
+                    label.Inlines = [new Avalonia.Controls.Documents.Run(en.Node.Title) { FontWeight = FontWeight.SemiBold }, new Avalonia.Controls.Documents.Run(" · " + en.Name) { Foreground = (IBrush)this.FindResource("MutedBrush")! }];
+                    var box = Field(Features.Format(en.Value), v =>
+                    {
+                        if (double.TryParse(v, NumberStyles.Float, CultureInfo.InvariantCulture, out var d)) _engine.SetParameter(s.Id, index, d);
+                    });
+                    box.FontFamily = (FontFamily)this.FindResource("MonoFont")!; box.FontSize = 12; box.Margin = new(0, 2);
+                    Grid.SetRow(label, i); Grid.SetRow(box, i); Grid.SetColumn(box, 1);
+                    grid.Children.Add(label); grid.Children.Add(box);
+                }
+                RightPanel.Children.Add(grid);
+            }
+            else RightPanel.Children.Add(new TextBlock { Text = T("No parametric history (imported, AI or sample geometry).", "Tidak ada histori parametrik (geometri impor, AI atau contoh)."), Classes = { "muted" }, FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new(12, 0, 12, 10) });
         }
         else if (ents.Count == 1 && sols.Count == 0)
         {
@@ -845,7 +868,7 @@ public partial class MainWindow : Window
         Doc.Edit("Change layer", d =>
         {
             for (int i = 0; i < d.Entities.Count; i++) if (ids.Contains(d.Entities[i].Id)) d.Entities[i] = d.Entities[i] with { Layer = layer };
-            for (int i = 0; i < d.Solids.Count; i++) if (ids.Contains(d.Solids[i].Id)) { var s = d.Solids[i]; d.Solids[i] = new StudioSolid(s.Id, s.Name, layer, s.Mesh, s.Color, s.Metallic, s.Roughness); }
+            for (int i = 0; i < d.Solids.Count; i++) if (ids.Contains(d.Solids[i].Id)) { var s = d.Solids[i]; d.Solids[i] = s with { Layer = layer }; }
         });
     }
 

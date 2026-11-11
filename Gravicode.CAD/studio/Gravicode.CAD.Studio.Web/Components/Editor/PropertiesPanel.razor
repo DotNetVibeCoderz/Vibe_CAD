@@ -14,10 +14,10 @@
         <dl class="props">
             <dt>@S.T("Type", "Tipe")</dt><dd>Solid</dd>
             <dt>@S.T("Name", "Nama")</dt><dd><input value="@s.Name" @onchange="e => ReplaceSolid(s, s with { Name = e.Value?.ToString() ?? s.Name })" /></dd>
-            <dt>Layer</dt><dd>@LayerSelect(s.Layer, v => ReplaceSolid(s, new StudioSolid(s.Id, s.Name, v, s.Mesh, s.Color, s.Metallic, s.Roughness)))</dd>
-            <dt>@S.T("Colour", "Warna")</dt><dd><input type="color" value="@s.Color" @onchange="e => ReplaceSolid(s, new StudioSolid(s.Id, s.Name, s.Layer, s.Mesh, e.Value?.ToString() ?? s.Color, s.Metallic, s.Roughness))" /> <code>@s.Color</code></dd>
-            <dt>@S.T("Metallic", "Metalik")</dt><dd><input type="range" min="0" max="1" step="0.05" value="@s.Metallic" @onchange="e => ReplaceSolid(s, new StudioSolid(s.Id, s.Name, s.Layer, s.Mesh, s.Color, D(e), s.Roughness))" /></dd>
-            <dt>@S.T("Roughness", "Kekasaran")</dt><dd><input type="range" min="0.05" max="1" step="0.05" value="@s.Roughness" @onchange="e => ReplaceSolid(s, new StudioSolid(s.Id, s.Name, s.Layer, s.Mesh, s.Color, s.Metallic, D(e)))" /></dd>
+            <dt>Layer</dt><dd>@LayerSelect(s.Layer, v => ReplaceSolid(s, s with { Layer = v }))</dd>
+            <dt>@S.T("Colour", "Warna")</dt><dd><input type="color" value="@s.Color" @onchange="e => ReplaceSolid(s, s with { Color = e.Value?.ToString() ?? s.Color })" /> <code>@s.Color</code></dd>
+            <dt>@S.T("Metallic", "Metalik")</dt><dd><input type="range" min="0" max="1" step="0.05" value="@s.Metallic" @onchange="e => ReplaceSolid(s, s with { Metallic = D(e) })" /></dd>
+            <dt>@S.T("Roughness", "Kekasaran")</dt><dd><input type="range" min="0.05" max="1" step="0.05" value="@s.Roughness" @onchange="e => ReplaceSolid(s, s with { Roughness = D(e) })" /></dd>
         </dl>
         <h3 class="props__sub">@S.T("Mass properties", "Properti massa")</h3>
         <dl class="props props--num">
@@ -28,6 +28,27 @@
             <dt>@S.T("Triangles", "Segitiga")</dt><dd>@s.Mesh.TriangleCount.ToString("N0")</dd>
             <dt>@S.T("Steel", "Baja")</dt><dd>@((p.Volume * 7.85e-3).ToString("N0")) g</dd>
         </dl>
+        <h3 class="props__sub">@S.T("History", "Histori")</h3>
+        @if (s.History is { } tree)
+        {
+            <p class="history__tree">@Features.Describe(tree)</p>
+            var entries = Features.Parameters(tree);
+            <ul class="history">
+                @for (int i = 0; i < entries.Count; i++)
+                {
+                    var index = i; var en = entries[i];
+                    <li style="padding-left:@(en.Depth * 10)px">
+                        <label for="hp-@index"><b>@en.Node.Title</b> · @en.Name</label>
+                        <input id="hp-@index" type="number" step="any" value="@Features.Format(en.Value)"
+                               @onchange="ev => SetParam(s.Id, index, ev)" />
+                    </li>
+                }
+            </ul>
+        }
+        else
+        {
+            <p class="props__desc muted">@S.T("No parametric history (imported, AI or sample geometry).", "Tidak ada histori parametrik (geometri impor, AI atau contoh).")</p>
+        }
     }
     else if (ents.Count == 1 && sols.Count == 0)
     {
@@ -88,6 +109,12 @@
 
 @code {
     private string Unit() => S.Document.Units.Symbol();
+
+    private void SetParam(Guid id, int index, ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v))
+            S.Engine.SetParameter(id, index, v);
+    }
     /// <summary>Rounds away "-0" (tiny negative values print as -0).</summary>
     private static double Nz(double v) => Math.Abs(v) < 5e-3 ? 0 : v;
     private static double D(ChangeEventArgs e) => double.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : 0;
@@ -113,7 +140,7 @@
         S.Document.Edit("Change layer", d =>
         {
             for (int i = 0; i < d.Entities.Count; i++) if (ids.Contains(d.Entities[i].Id)) d.Entities[i] = d.Entities[i] with { Layer = layer };
-            for (int i = 0; i < d.Solids.Count; i++) if (ids.Contains(d.Solids[i].Id)) { var s = d.Solids[i]; d.Solids[i] = new StudioSolid(s.Id, s.Name, layer, s.Mesh, s.Color, s.Metallic, s.Roughness); }
+            for (int i = 0; i < d.Solids.Count; i++) if (ids.Contains(d.Solids[i].Id)) { var s = d.Solids[i]; d.Solids[i] = s with { Layer = layer }; }
         });
     }
 

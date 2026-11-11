@@ -34,7 +34,17 @@ public static class ProjectFile
     private sealed record BlockDto(string Name, List<EntityDto> Items, string? Description = null);
 
     private sealed record EntityDto(Guid Id, string Layer, string? Color, string Kind, double[] V, string? Text = null, bool Closed = false, double[]? B = null, string? Space = null);
-    private sealed record SolidDto(Guid Id, string Name, string Layer, string Color, double Metallic, double Roughness, string Positions, string Indices);
+    private sealed record SolidDto(Guid Id, string Name, string Layer, string Color, double Metallic, double Roughness, string Positions, string Indices, FeatureDto? H = null);
+    /// <summary>Feature tree: kind, parameter names/values, children, profile loops (flattened x,y) and matrix.</summary>
+    private sealed record FeatureDto(string K, string[] N, double[] V, List<FeatureDto>? C = null, List<double[]>? L = null, double[]? M = null);
+
+    private static FeatureDto ToDto(Feature f) => new(f.Kind, [.. f.Params.Select(p => p.Name)], [.. f.Params.Select(p => p.Value)],
+        f.Children.Count == 0 ? null : [.. f.Children.Select(ToDto)],
+        f.Loops is null ? null : [.. f.Loops.Select(l => l.SelectMany(p => new[] { p.X, p.Y }).ToArray())], f.Matrix);
+
+    private static Feature FromDto(FeatureDto d) => new(d.K, [.. d.N.Zip(d.V, (n, v) => new FeatureParam(n, v))],
+        [.. (d.C ?? []).Select(FromDto)],
+        d.L is null ? null : [.. d.L.Select(a => (IReadOnlyList<Vec2>)[.. Enumerable.Range(0, a.Length / 2).Select(i => new Vec2(a[2 * i], a[2 * i + 1]))])], d.M);
 
     public static byte[] Save(StudioDocument doc)
     {
@@ -43,7 +53,7 @@ public static class ProjectFile
             [.. doc.Entities.Select(e => ToDto(e) is { } dto ? dto with { Space = e.Space } : null).OfType<EntityDto>()],
             [.. doc.Solids.Select(s => new SolidDto(s.Id, s.Name, s.Layer, s.Color, s.Metallic, s.Roughness,
                 Convert.ToBase64String(MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(s.Mesh.Positions))),
-                Convert.ToBase64String(MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(s.Mesh.Indices)))))],
+                Convert.ToBase64String(MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(s.Mesh.Indices))), s.History is { } h ? ToDto(h) : null))],
             doc.Properties,
             doc.Blocks.Count == 0 ? null : [.. doc.Blocks.Values.Select(b => new BlockDto(b.Name,
                 [.. b.Items.Select(i => ToDto(new StudioEntity(Guid.Empty, i.Layer, i.Geometry, i.Color))).OfType<EntityDto>()], b.Description))],
@@ -97,7 +107,7 @@ public static class ProjectFile
         {
             var pos = MemoryMarshal.Cast<byte, Vec3>(Convert.FromBase64String(sd.Positions)).ToArray();
             var idx = MemoryMarshal.Cast<byte, int>(Convert.FromBase64String(sd.Indices)).ToArray();
-            doc.Solids.Add(new StudioSolid(sd.Id, sd.Name, sd.Layer, new Mesh(pos, idx), sd.Color, sd.Metallic, sd.Roughness));
+            doc.Solids.Add(new StudioSolid(sd.Id, sd.Name, sd.Layer, new Mesh(pos, idx), sd.Color, sd.Metallic, sd.Roughness, sd.H is { } h ? FromDto(h) : null));
         }
         foreach (var (k, v) in dto.Properties) doc.Properties[k] = v;
         doc.IsDirty = false;

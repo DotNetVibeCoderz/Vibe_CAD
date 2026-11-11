@@ -13,10 +13,15 @@ public sealed record StudioEntity(Guid Id, string Layer, DrawingEntity Geometry,
 }
 
 /// <summary>A 3D solid body. Meshes are immutable values: edits create new meshes.</summary>
-public sealed record StudioSolid(Guid Id, string Name, string Layer, Mesh Mesh, string Color = "#9AA7B4", double Metallic = 0.4, double Roughness = 0.4)
+/// <remarks><see cref="History"/> is the parametric feature tree the mesh was built from (null for imported, AI and
+/// sample solids). Change the mesh only through <see cref="WithMesh"/> so the cached plan outline is rebuilt.</remarks>
+public sealed record StudioSolid(Guid Id, string Name, string Layer, Mesh Mesh, string Color = "#9AA7B4", double Metallic = 0.4, double Roughness = 0.4, Feature? History = null)
 {
-    public static StudioSolid Create(string name, string layer, Mesh mesh, string color = "#9AA7B4", double metallic = 0.4, double roughness = 0.4) =>
-        new(Guid.NewGuid(), name, layer, mesh, color, metallic, roughness);
+    public static StudioSolid Create(string name, string layer, Mesh mesh, string color = "#9AA7B4", double metallic = 0.4, double roughness = 0.4, Feature? history = null) =>
+        new(Guid.NewGuid(), name, layer, mesh, color, metallic, roughness, history);
+
+    /// <summary>Same solid with a new mesh (and history); the cached outline is not carried over.</summary>
+    public StudioSolid WithMesh(Mesh mesh, Feature? history) => new(Id, Name, Layer, mesh, Color, Metallic, Roughness, history);
 
     private List<(Vec2 A, Vec2 B)>? _plan;
     /// <summary>Top-view outline (feature edges projected to XY), cached for drafting display and picking.</summary>
@@ -166,9 +171,9 @@ public sealed class StudioDocument
         return e;
     }
 
-    public StudioSolid AddSolid(string name, Mesh mesh, string color = "#9AA7B4", string? layer = null, double metallic = 0.4, double roughness = 0.4)
+    public StudioSolid AddSolid(string name, Mesh mesh, string color = "#9AA7B4", string? layer = null, double metallic = 0.4, double roughness = 0.4, Feature? history = null)
     {
-        var s = StudioSolid.Create(name, layer ?? "Solids", mesh, color, metallic, roughness);
+        var s = StudioSolid.Create(name, layer ?? "Solids", mesh, color, metallic, roughness, history);
         EnsureLayer(s.Layer);
         Solids.Add(s);
         return s;

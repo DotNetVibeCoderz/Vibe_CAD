@@ -48,6 +48,7 @@ public class SpacesTests
 
         e.RunScript("MODEL");
         Assert.Null(doc.ActiveSpace);
+        Assert.DoesNotContain(e.History, l => l.Contains("Error"));      // a space switch must not cancel the command doing it
     }
 
     [Fact]

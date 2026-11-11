@@ -246,6 +246,14 @@ public sealed partial class CommandEngine
         if (key != null && !Document.Planes.ContainsKey(key) && !Document.Layouts.ContainsKey(key)) return;
         if (Document.ActiveSpace == key) return;
         Cancel(silent: true);
+        SwitchSpace(key);
+    }
+
+    /// <summary>Space switch used by commands themselves (MODEL, UCS World, LAYOUT Set): no cancel of the caller.</summary>
+    internal void SwitchSpace(string? key)
+    {
+        if (key != null && !Document.Planes.ContainsKey(key) && !Document.Layouts.ContainsKey(key)) return;
+        if (Document.ActiveSpace == key) return;
         Selection.Clear();
         Document.ActiveSpace = key;
         Document.Touch();
@@ -256,6 +264,33 @@ public sealed partial class CommandEngine
 
     public string SpaceName(string? key) =>
         key is null ? "Model" : Document.Planes.TryGetValue(key, out var p) ? p.Name : Document.Layouts.TryGetValue(key, out var l) ? l.Name : key;
+
+    /// <summary>
+    /// Changes one number of a solid's parametric history (index into <see cref="Features.Parameters"/>) and rebuilds
+    /// the solid from its feature tree. Returns false (with a message) when the result would be invalid.
+    /// </summary>
+    public bool SetParameter(Guid solidId, int index, double value)
+    {
+        var s = Document.Solids.FirstOrDefault(x => x.Id == solidId);
+        if (s?.History is not { } tree) { Print("  This solid has no history (imported, AI or sample geometry)."); return false; }
+        var entries = Features.Parameters(tree);
+        if (index < 0 || index >= entries.Count) return false;
+        var entry = entries[index];
+        if (Math.Abs(entry.Value - value) < 1e-12) return true;
+        var edited = Features.With(tree, entry.Node, entry.Index, value);
+        Mesh mesh;
+        try { mesh = Features.Evaluate(edited); }
+        catch (Exception ex) { Print($"  Could not rebuild: {ex.Message}"); Raise(); return false; }
+        if (mesh.IsEmpty || mesh.TriangleCount == 0) { Print("  That value leaves nothing of the solid — not applied."); Raise(); return false; }
+        Document.Edit($"Edit {entry.Label}", d =>
+        {
+            int i = d.Solids.FindIndex(x => x.Id == solidId);
+            if (i >= 0) d.Solids[i] = d.Solids[i].WithMesh(mesh, edited);
+        });
+        Print($"  {entry.Label} = {Features.Format(value)} → volume {mesh.Volume:N1}");
+        Raise();
+        return true;
+    }
 
     /// <summary>Selected solids (the gizmo acts on these).</summary>
     public IReadOnlyList<Guid> SelectedSolidIds => [.. Document.Solids.Where(s => Selection.Contains(s.Id)).Select(s => s.Id)];

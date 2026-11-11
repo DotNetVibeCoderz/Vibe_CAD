@@ -12,9 +12,10 @@ public static partial class StudioCommands
             e.Register(new CommandInfo(name, aliases, group, desc, run));
 
         R("UCS", ["SKETCH"], "View", "Draw on a face: UCS Face (click a face in 3D) | World | List", UcsCmd);
-        R("MODEL", ["MS"], "View", "Back to model space (top view of the world)", c => Simple(c, () => c.Engine.SetSpace(null)));
+        R("MODEL", ["MS"], "View", "Back to model space (top view of the world)", c => Simple(c, () => c.Engine.SwitchSpace(null)));
         R("LAYOUT", ["LO"], "Output", "Paper-space sheets: LAYOUT New | Set | List | Delete", LayoutCmd);
         R("MVIEW", ["MV"], "Output", "Adds a viewport onto the model to the current layout", MviewCmd);
+        R("PARAM", ["PARAMS", "HISTORY"], "Solid", "Shows a solid's parametric history and edits its numbers (the solid rebuilds)", ParamCmd);
     }
 
     private static readonly double[] NiceScales = [1, 2, 2.5, 5, 10];
@@ -49,7 +50,7 @@ public static partial class StudioCommands
         switch (c.Keyword ?? "Face")
         {
             case "World":
-                c.Engine.SetSpace(null);
+                c.Engine.SwitchSpace(null);
                 yield break;
             case "List":
                 if (c.Doc.Planes.Count == 0) c.Print("  No work planes yet.");
@@ -71,6 +72,35 @@ public static partial class StudioCommands
         c.RequestView("zoom-extents");
     }
 
+    // ===================================================================== parametric history
+
+    private static IEnumerable<Prompt> ParamCmd(CommandContext c)
+    {
+        var solid = c.SelectedSolids.FirstOrDefault();
+        if (solid is null)
+        {
+            yield return Prompt.Select("Select a solid") with { Single = true };
+            solid = c.SelectedSolids.FirstOrDefault();
+        }
+        if (solid is null) yield break;
+        if (solid.History is null) { c.Print("  This solid has no history (imported, AI or sample geometry)."); yield break; }
+        while (true)
+        {
+            var current = c.Doc.Solids.FirstOrDefault(s => s.Id == solid.Id);
+            if (current?.History is not { } tree) yield break;
+            c.Print($"  {current.Name}: {Features.Describe(tree)}");
+            var entries = Features.Parameters(tree);
+            for (int i = 0; i < entries.Count; i++) c.Print($"    {i + 1,2}. {new string(' ', entries[i].Depth * 2)}{entries[i].Label} = {Features.Format(entries[i].Value)}");
+            yield return Prompt.Integer("Parameter number to change (Enter to finish)", 1) with { AllowEnd = true };
+            if (c.IsEnd) yield break;
+            int n = (int)c.Number - 1;
+            if (n < 0 || n >= entries.Count) { c.Print("  No such parameter."); continue; }
+            yield return Prompt.Distance($"New value for {entries[n].Label}", null, entries[n].Value);
+            if (c.IsEnd) continue;
+            c.Engine.SetParameter(solid.Id, n, c.Number);
+        }
+    }
+
     // ===================================================================== layouts
 
     private static IEnumerable<Prompt> LayoutCmd(CommandContext c)
@@ -88,7 +118,7 @@ public static partial class StudioCommands
             yield return Prompt.Text("Layout name");
             var found = c.Doc.Layouts.Values.FirstOrDefault(l => l.Name.Equals(c.Text.Trim(), StringComparison.OrdinalIgnoreCase));
             if (found is null) { c.Print($"  No layout named \"{c.Text.Trim()}\"."); yield break; }
-            if (opt == "Set") { c.Engine.SetSpace(found.Key); yield break; }
+            if (opt == "Set") { c.Engine.SwitchSpace(found.Key); yield break; }
             c.Doc.Edit("Delete layout", d =>
             {
                 d.Layouts.Remove(found.Key);
