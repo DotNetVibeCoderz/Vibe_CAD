@@ -200,6 +200,55 @@ public sealed partial class CommandEngine
         Advance();
     }
 
+    // ===================================================================== 3D picking & gizmos
+
+    /// <summary>
+    /// Click in a 3D view: the ray (CAD space) selects the nearest solid, Shift adds/removes. Answers a running
+    /// selection prompt like a 2D pick. Returns the hit (null = empty space, which clears the selection).
+    /// </summary>
+    public SolidHit? Pick3D(Vec3 origin, Vec3 direction, bool additive = false)
+    {
+        if (_running != null && CurrentPrompt?.Kind != PromptKind.Select) return null;
+        var hit = Solid3D.Raycast(Document, origin, direction);
+        PickObject(hit?.Id, additive);
+        return hit;
+    }
+
+    /// <summary>Selects an object picked by a viewer (null = empty space). Same rules as a 2D click: replaces the
+    /// selection unless additive (Shift toggles), and answers a running selection prompt.</summary>
+    public void PickObject(Guid? id, bool additive = false)
+    {
+        if (_running != null && CurrentPrompt?.Kind != PromptKind.Select) return;
+        if (!additive && _running == null) Selection.Clear();
+        if (id is { } h && !Selection.Remove(h)) Selection.Add(h);
+        if (_running != null && CurrentPrompt is { Single: true } && Selection.Count > 0) { Feed(new Input.EndInput()); return; }
+        Raise();
+    }
+
+    /// <summary>Selected solids (the gizmo acts on these).</summary>
+    public IReadOnlyList<Guid> SelectedSolidIds => [.. Document.Solids.Where(s => Selection.Contains(s.Id)).Select(s => s.Id)];
+
+    /// <summary>Gizmo move: translates the selected solids (one undo step).</summary>
+    public void Move3D(Vec3 delta)
+    {
+        if (_running != null || delta.LengthSquared < 1e-24) return;
+        int n = Solid3D.Transform(Document, SelectedSolidIds, Mat4.Translation3(delta), "Move 3D");
+        if (n > 0) Print($"Moved {n} solid(s) by {delta.X:0.###}, {delta.Y:0.###}, {delta.Z:0.###}");
+        Raise();
+    }
+
+    /// <summary>Gizmo rotate: turns the selected solids about an axis through <paramref name="pivot"/>
+    /// (default: the centre of their bounds).</summary>
+    public void Rotate3D(Vec3 axis, double radians, Vec3? pivot = null)
+    {
+        if (_running != null || Math.Abs(radians) < 1e-12 || axis.LengthSquared < 1e-24) return;
+        var ids = SelectedSolidIds;
+        var c = pivot ?? Solid3D.Bounds(Document, ids).Center;
+        int n = Solid3D.Transform(Document, ids, Mat4.RotateAround(c, axis.Normalized(), radians), "Rotate 3D");
+        if (n > 0) Print($"Rotated {n} solid(s) {Units.ToDegrees(radians):0.##}° about ({axis.X:0.##}, {axis.Y:0.##}, {axis.Z:0.##})");
+        Raise();
+    }
+
     // ===================================================================== grips
 
     /// <summary>When idle with a selection, a click on a grip starts a stretch: the next click places it.</summary>

@@ -7,13 +7,24 @@ const THEMES = {
   light: { bg: 0xf4f6fa, grid: 0xd5dbe5, gridMajor: 0xb8c2d1, edge: 0x1d232b, wire: 0x1d232b },
 };
 
-export function createViewer(host, options) {
-  return new CadViewer(host, options ?? {});
+export function createViewer(host, options, dotnet) {
+  return new CadViewer(host, options ?? {}, dotnet);
 }
 
+const AXES = [
+  { name: 'X', dir: new THREE.Vector3(1, 0, 0), color: 0xff5a4e },
+  { name: 'Y', dir: new THREE.Vector3(0, 1, 0), color: 0x5ad17a },
+  { name: 'Z', dir: new THREE.Vector3(0, 0, 1), color: 0x4f8df7 },
+];
+const HOVER = 0xffd84d, SELECT = 0xff8a3d;
+
 class CadViewer {
-  constructor(host, options) {
+  constructor(host, options, dotnet) {
     this.host = host;
+    this.dotnet = dotnet ?? null;
+    host.gcadViewer = this;   // handle for tests and host-page scripting
+    this.selectable = false; this.highlighted = new Set(); this.gizmoMode = null; this.snap = 0;
+    this.raycaster = new THREE.Raycaster();
     this.theme = THEMES[options.theme] ?? THEMES.dark;
     this.showGrid = options.grid !== false;
     this.autoRotate = !!options.autoRotate;
@@ -51,6 +62,9 @@ class CadViewer {
     this.scene.add(this.content);
     this.helpers = new THREE.Group();
     this.scene.add(this.helpers);
+    this.gizmo = new THREE.Group();
+    this.gizmo.visible = false;
+    this.scene.add(this.gizmo);
 
     // orbit state (spherical around target, Z-up)
     this.target = new THREE.Vector3();
@@ -65,16 +79,18 @@ class CadViewer {
       if (this.disposed) return;
       if (this.autoRotate && !this.dragging) this.yaw += 0.003;
       this.#updateCamera();
+      this.#updateGizmo();
       this.renderer.render(this.scene, this.camera);
       this.frame = requestAnimationFrame(loop);
     };
     this.frame = requestAnimationFrame(loop);
   }
 
-  setScene(scene, bytes, showEdges) {
+  setScene(scene, bytes, showEdges, keepView) {
+    const firstLoad = !this.bounds;
     this.#clear();
     const buf = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-    for (const b of scene.bodies) {
+    scene.bodies.forEach((b, bodyIndex) => {
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(buf, b.positionsOffset, b.positionsCount), 3));
       geo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(buf, b.normalsOffset, b.positionsCount), 3));
@@ -86,16 +102,18 @@ class CadViewer {
       });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.name = b.name; mesh.castShadow = true; mesh.receiveShadow = true;
+      mesh.userData.body = bodyIndex;
       this.content.add(mesh);
       if (b.edgesCount > 0) {
         const eg = new THREE.BufferGeometry();
         eg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(buf, b.edgesOffset, b.edgesCount), 3));
         const lines = new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: this.theme.edge }));
         lines.userData.isEdges = true;
+        lines.userData.body = bodyIndex;
         lines.visible = showEdges !== false;
         this.content.add(lines);
       }
-    }
+    });
     for (const w of scene.wires) {
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(buf, w.offset, w.count), 3));
@@ -104,7 +122,174 @@ class CadViewer {
     this.edgesVisible = showEdges !== false;
     this.bounds = new THREE.Box3(new THREE.Vector3(...scene.min), new THREE.Vector3(...scene.max));
     this.#buildHelpers();
-    this.fit();
+    if (firstLoad || !keepView) this.fit();
+    this.#applyHighlight();
+    this.#buildGizmo();
+  }
+
+  // ---------------------------------------------------------------- selection & gizmo
+
+  /** selectable: clicks report bodies; highlighted: body indices; gizmo: null | 'move' | 'rotate'; snap: move step. */
+  setInteraction(opts) {
+    this.selectable = !!opts.selectable;
+    this.highlighted = new Set(opts.highlighted ?? []);
+    this.snap = opts.snap ?? 0;
+    if ((opts.gizmo ?? null) !== this.gizmoMode) { this.gizmoMode = opts.gizmo ?? null; this.#buildGizmo(); }
+    this.#applyHighlight();
+  }
+
+  #applyHighlight() {
+    this.content.traverse(o => {
+      if (o.userData.body === undefined || !o.material) return;
+      const on = this.highlighted.has(o.userData.body);
+      if (o.isMesh) { o.material.emissive?.setHex(on ? SELECT : 0x000000); o.material.emissiveIntensity = on ? 0.6 : 0; }
+      else if (o.userData.isEdges) o.material.color.setHex(on ? SELECT : this.theme.edge);
+    });
+  }
+
+  #selectionBox() {
+    const box = new THREE.Box3();
+    this.content.traverse(o => { if (o.isMesh && this.highlighted.has(o.userData.body)) box.expandByObject(o); });
+    return box;
+  }
+
+  #buildGizmo() {
+    this.gizmo.traverse(o => { o.geometry?.dispose?.(); o.material?.dispose?.(); });
+    this.gizmo.clear();
+    this.handles = [];
+    if (!this.gizmoMode) return;
+    const up = new THREE.Vector3(0, 1, 0);
+    for (const a of AXES) {
+      const mat = new THREE.MeshBasicMaterial({ color: a.color, depthTest: false, transparent: true, opacity: 0.95 });
+      const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+      const part = new THREE.Group();
+      if (this.gizmoMode === 'move') {
+        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.8, 8), mat); shaft.position.y = 0.4;
+        const head = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.2, 16), mat); head.position.y = 0.9;
+        const hit = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 1.05, 8), hitMat); hit.position.y = 0.52;
+        part.add(shaft, head, hit);
+        part.quaternion.setFromUnitVectors(up, a.dir);
+        this.handles.push({ axis: a, hit, mat });
+      } else {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.014, 8, 96), mat);
+        const hit = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.08, 6, 48), hitMat);
+        part.add(ring, hit);
+        // a torus lies in its local XY plane: turn its normal (+Z) onto the axis
+        part.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), a.dir);
+        this.handles.push({ axis: a, hit, mat });
+      }
+      part.traverse(o => { o.renderOrder = 999; });
+      this.gizmo.add(part);
+    }
+  }
+
+  #updateGizmo() {
+    if (!this.gizmoMode || this.highlighted.size === 0) { this.gizmo.visible = false; return; }
+    if (!this.gizmoDrag) {
+      const box = this.#selectionBox();
+      if (box.isEmpty()) { this.gizmo.visible = false; return; }
+      box.getCenter(this.gizmo.position);
+    }
+    this.gizmo.visible = true;
+    // constant size on screen
+    this.gizmo.scale.setScalar(this.camera.position.distanceTo(this.gizmo.position) * 0.16);
+  }
+
+  #ray(e) {
+    const r = this.renderer.domElement.getBoundingClientRect();
+    const ndc = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    this.raycaster.setFromCamera(ndc, this.camera);
+    return this.raycaster;
+  }
+
+  #handleAt(e) {
+    if (!this.gizmo.visible || !this.handles?.length) return null;
+    const hits = this.#ray(e).intersectObjects(this.handles.map(h => h.hit), false);
+    return hits.length ? this.handles.find(h => h.hit === hits[0].object) : null;
+  }
+
+  #hover(e) {
+    const h = this.#handleAt(e);
+    for (const x of this.handles ?? []) x.mat.color.setHex(x === h ? HOVER : x.axis.color);
+    this.renderer.domElement.style.cursor = h ? 'grab' : '';
+  }
+
+  /** Point where the pointer ray meets the drag plane of the active handle. */
+  #dragPoint(e) {
+    const hit = new THREE.Vector3();
+    return this.#ray(e).ray.intersectPlane(this.gizmoDrag.plane, hit) ? hit : null;
+  }
+
+  #gizmoDown(e) {
+    const h = this.#handleAt(e);
+    if (!h) return false;
+    const axis = h.axis.dir.clone(), pivot = this.gizmo.position.clone();
+    let normal;
+    if (this.gizmoMode === 'move') {
+      // plane containing the axis that faces the camera best
+      const view = new THREE.Vector3().subVectors(this.camera.position, pivot).normalize();
+      normal = new THREE.Vector3().crossVectors(axis, new THREE.Vector3().crossVectors(view, axis)).normalize();
+      if (normal.lengthSq() < 1e-9) return false;
+    } else normal = axis.clone();
+    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, pivot);
+    this.gizmoDrag = { handle: h, axis, pivot, plane, start: null, value: 0 };
+    this.gizmoDrag.start = this.#dragPoint(e);
+    if (!this.gizmoDrag.start) { this.gizmoDrag = null; return false; }
+    // live preview: the selected objects move inside a group pivoted at the gizmo
+    this.dragGroup = new THREE.Group();
+    this.dragGroup.position.copy(pivot);
+    this.content.add(this.dragGroup);
+    this.dragGroup.updateMatrixWorld();
+    const picked = this.content.children.filter(o => o !== this.dragGroup && this.highlighted.has(o.userData.body));
+    for (const o of picked) this.dragGroup.attach(o);
+    h.mat.color.setHex(HOVER);
+    try { this.renderer.domElement.setPointerCapture(e.pointerId); } catch { /* pen / synthetic pointers */ }
+    return true;
+  }
+
+  #gizmoMove(e) {
+    const d = this.gizmoDrag, p = this.#dragPoint(e);
+    if (!p) return;
+    if (this.gizmoMode === 'move') {
+      let t = new THREE.Vector3().subVectors(p, d.start).dot(d.axis);
+      if (this.snap > 0 && !e.altKey) t = Math.round(t / this.snap) * this.snap;
+      d.value = t;
+      this.dragGroup.position.copy(d.pivot).addScaledVector(d.axis, t);
+      this.gizmo.position.copy(this.dragGroup.position);
+    } else {
+      const v0 = new THREE.Vector3().subVectors(d.start, d.pivot), v1 = new THREE.Vector3().subVectors(p, d.pivot);
+      let a = Math.atan2(new THREE.Vector3().crossVectors(v0, v1).dot(d.axis), v0.dot(v1));
+      if (!e.altKey) { const step = Math.PI / 12; a = Math.round(a / step) * step; }
+      d.value = a;
+      this.dragGroup.quaternion.setFromAxisAngle(d.axis, a);
+    }
+  }
+
+  #gizmoUp() {
+    const d = this.gizmoDrag;
+    this.gizmoDrag = null;
+    d.handle.mat.color.setHex(d.handle.axis.color);
+    if (Math.abs(d.value) < 1e-9 || !this.dotnet) {
+      // nothing to commit: put the objects back where they were
+      this.dragGroup.position.copy(d.pivot); this.dragGroup.quaternion.identity(); this.dragGroup.updateMatrixWorld();
+      for (const o of [...this.dragGroup.children]) this.content.attach(o);
+      this.dragGroup.removeFromParent();
+      this.dragGroup = null;
+      return;
+    }
+    // the host applies the edit and sends a new scene, which replaces the preview
+    const a = d.axis, p = d.pivot;
+    if (this.gizmoMode === 'move') this.dotnet.invokeMethodAsync('OnGizmoFromJs', 'move', a.x * d.value, a.y * d.value, a.z * d.value, a.x, a.y, a.z, 0, p.x, p.y, p.z);
+    else this.dotnet.invokeMethodAsync('OnGizmoFromJs', 'rotate', 0, 0, 0, a.x, a.y, a.z, d.value, p.x, p.y, p.z);
+  }
+
+  #pick(e) {
+    if (!this.selectable || !this.dotnet) return;
+    const meshes = [];
+    this.content.traverse(o => { if (o.isMesh && o.userData.body !== undefined) meshes.push(o); });
+    const hit = this.#ray(e).intersectObjects(meshes, false)[0];
+    const pt = hit?.point;
+    this.dotnet.invokeMethodAsync('OnPickFromJs', hit ? hit.object.userData.body : -1, pt?.x ?? 0, pt?.y ?? 0, pt?.z ?? 0, e.shiftKey || e.ctrlKey);
   }
 
   #buildHelpers() {
@@ -171,16 +356,19 @@ class CadViewer {
   #bindInput() {
     const el = this.renderer.domElement;
     el.style.touchAction = 'none';
-    let last = null, mode = 0;
+    let last = null, mode = 0, down = null;
     el.addEventListener('contextmenu', e => e.preventDefault());
     el.addEventListener('pointerdown', e => {
-      el.setPointerCapture(e.pointerId);
+      down = e.button === 0 ? [e.clientX, e.clientY] : null;
+      if (e.button === 0 && this.#gizmoDown(e)) { down = null; return; }
+      try { el.setPointerCapture(e.pointerId); } catch { /* pen / synthetic pointers */ }
       last = [e.clientX, e.clientY];
       mode = (e.button === 2 || e.button === 1 || e.shiftKey) ? 2 : 1;
       this.dragging = true;
     });
     el.addEventListener('pointermove', e => {
-      if (!last) return;
+      if (this.gizmoDrag) { this.#gizmoMove(e); return; }
+      if (!last) { this.#hover(e); return; }
       const dx = e.clientX - last[0], dy = e.clientY - last[1];
       last = [e.clientX, e.clientY];
       if (mode === 1) {
@@ -196,7 +384,13 @@ class CadViewer {
       }
     });
     const end = () => { last = null; this.dragging = false; };
-    el.addEventListener('pointerup', end);
+    el.addEventListener('pointerup', e => {
+      if (this.gizmoDrag) { this.#gizmoUp(); return; }
+      // a click (no drag) picks a body
+      if (down && Math.hypot(e.clientX - down[0], e.clientY - down[1]) < 4) this.#pick(e);
+      down = null;
+      end();
+    });
     el.addEventListener('pointercancel', end);
     el.addEventListener('wheel', e => {
       e.preventDefault();
@@ -216,6 +410,8 @@ class CadViewer {
   #clear() {
     this.content.traverse(o => { o.geometry?.dispose?.(); o.material?.dispose?.(); });
     this.content.clear();
+    this.dragGroup = null;
+    this.gizmoDrag = null;
   }
 
   dispose() {

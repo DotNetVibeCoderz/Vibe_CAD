@@ -60,7 +60,7 @@ wheel zoom, middle-drag or Space+drag pan, double-middle-click zoom extents.
 | Annotate | DIMLINEAR (DLI) |
 | Blocks | BLOCK (B), INSERT (I) |
 | Output | PLOT (PRINT) |
-| Solids | BOX, CYLINDER (CYL), CONE, SPHERE, TORUS (TOR), GEAR, EXTRUDE (EXT, nested shapes become holes), REVOLVE (REV), UNION (UNI), SUBTRACT (SU), INTERSECT (IN), ELEVATE (EL) |
+| Solids | BOX, CYLINDER (CYL), CONE, SPHERE, TORUS (TOR), GEAR, EXTRUDE (EXT, nested shapes become holes), REVOLVE (REV), UNION (UNI), SUBTRACT (SU), INTERSECT (IN), ELEVATE (EL), 3DMOVE (3M), 3DROTATE (3R) |
 | Inspect | DIST (DI), AREA (AA), MASSPROP (MP), LIST (LI) |
 | Layers | LAYER (LA: New/Set/On/Off/Lock/Unlock/List), COLOR (COL) |
 | View | ZOOM (Z), VIEW3D, PLAN, GRID, ORTHO, OSNAP, SELECTALL |
@@ -90,6 +90,26 @@ Booleans run on the Rust kernel when it is present (status bar shows the kernel)
   objects. Blocks are saved in the `.gcproj`.
 
 ![Desktop grips](../images/studio-desktop-drafting.png)
+
+## 3D selection and gizmo
+
+![Web gizmo](../images/studio-web-gizmo.png)
+
+In the 3D pane a **click** selects the solid under the cursor (Shift/Ctrl adds or removes, a click on empty space
+clears); dragging still orbits the camera. Selected solids glow orange in 3D and in the plan, and the selection is
+shared with the 2D view and every command (`SUBTRACT`, `MASSPROP`, …).
+
+The bar at the top left of the 3D pane switches the gizmo:
+
+- **MOVE**: drag the red/green/blue arrow to move the selection along X, Y or Z. Steps follow the grid size
+  (status bar `GRID`); hold **Alt** for free movement.
+- **ROTATE**: drag a ring to turn the selection about that axis through its centre, in 15° steps (Alt = free).
+- **SELECT**: no gizmo, just picking.
+
+Each drag is one undo step. From the keyboard: `3DMOVE` (displacement `dx,dy,dz`) and `3DROTATE` (axis X/Y/Z,
+angle). The desktop edition draws the same gizmo over the GPU view:
+
+![Desktop gizmo](../images/studio-desktop-gizmo.png)
 
 ## Plotting
 

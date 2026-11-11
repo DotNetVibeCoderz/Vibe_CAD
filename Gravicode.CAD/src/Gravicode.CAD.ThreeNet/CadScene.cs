@@ -19,6 +19,9 @@ public sealed class CadScene : IDisposable
     private readonly List<Node> _modelNodes = [];
     private readonly List<global::ThreeNet.Geometry> _geometries = [];
     private readonly List<global::ThreeNet.Material> _materials = [];
+    // per body (visible, non-empty — the order of SetModel): surface material, edge material, original colours
+    private readonly List<(global::ThreeNet.Material Surface, global::ThreeNet.Material? Edges, Vector4 Color)> _bodies = [];
+    private static readonly Vector4 EdgeColor = new(0.05f, 0.06f, 0.08f, 1);
     private Node? _grid;
 
     public bool ShowEdges { get; set; } = true;
@@ -71,6 +74,7 @@ public sealed class CadScene : IDisposable
             var c = body.Color;
             var mat = Scene.CreateMaterial(MaterialOptions.Pbr(new Vector4((float)c.R, (float)c.G, (float)c.B, (float)c.A), (float)body.Metallic, (float)body.Roughness));
             _geometries.Add(geo); _materials.Add(mat);
+            global::ThreeNet.Material? edgeMat = null;
             var node = Scene.AddMesh(geo, mat, Root, body.Name);
             node.CastShadow = true; node.ReceiveShadow = true;
             _modelNodes.Add(node);
@@ -89,11 +93,13 @@ public sealed class CadScene : IDisposable
                         ei[i * 2] = (uint)(i * 2); ei[i * 2 + 1] = (uint)(i * 2 + 1);
                     }
                     var eg = Scene.CreateGeometry(ev, ei, PrimitiveTopology.LineList);
-                    var em = Scene.CreateMaterial(MaterialOptions.Basic(new Vector4(0.05f, 0.06f, 0.08f, 1)));
+                    var em = Scene.CreateMaterial(MaterialOptions.Basic(EdgeColor));
                     _geometries.Add(eg); _materials.Add(em);
+                    edgeMat = em;
                     _modelNodes.Add(Scene.AddMesh(eg, em, Root, body.Name + "_edges"));
                 }
             }
+            _bodies.Add((mat, edgeMat, new Vector4((float)c.R, (float)c.G, (float)c.B, (float)c.A)));
         }
         Bounds = model.Bounds;
         AddGrid();
@@ -126,8 +132,30 @@ public sealed class CadScene : IDisposable
         Camera.Camera = cam;
     }
 
+    /// <summary>Number of bodies shown (visible, non-empty — in model order).</summary>
+    public int BodyCount => _bodies.Count;
+
+    /// <summary>
+    /// Tints the given bodies (indices in model order, visible non-empty bodies only) and their edges with
+    /// <paramref name="color"/>; every other body gets its own colour back. Cheap: only material colours change.
+    /// </summary>
+    public void SetHighlight(IReadOnlyCollection<int> bodies, Vector4? color = null)
+    {
+        var tint = color ?? new Vector4(1f, 0.54f, 0.24f, 1f);   // #FF8A3D
+        for (int i = 0; i < _bodies.Count; i++)
+        {
+            var (surface, edges, original) = _bodies[i];
+            bool on = bodies.Contains(i);
+            // blend so the part keeps a hint of its own colour and shading
+            surface.BaseColor = on ? Vector4.Lerp(original, tint, 0.65f) with { W = original.W } : original;
+            if (edges is not null) edges.BaseColor = on ? tint : EdgeColor;
+        }
+    }
+
     /// <summary>Converts a CAD (Z-up) point to ThreeNet world (Y-up).</summary>
     public static Vector3 ToWorld(Vec3 p) => new((float)p.X, (float)p.Z, (float)-p.Y);
+    /// <summary>Converts a ThreeNet world (Y-up) point or direction back to CAD (Z-up).</summary>
+    public static Vec3 ToCad(Vector3 w) => new(w.X, -w.Z, w.Y);
 
     /// <summary>World-space centre and radius of the model (for orbit controllers).</summary>
     public (Vector3 Center, float Radius) Frame()
@@ -145,6 +173,7 @@ public sealed class CadScene : IDisposable
 
     public void Clear()
     {
+        _bodies.Clear();
         foreach (var n in _modelNodes) n.Remove();
         _modelNodes.Clear();
         _grid?.Remove(); _grid = null;

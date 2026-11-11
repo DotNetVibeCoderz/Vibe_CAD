@@ -138,6 +138,11 @@
       <Setter Property="BorderBrush" Value="{StaticResource SelectBrush}" />
       <Setter Property="Foreground" Value="{StaticResource SelectBrush}" />
     </Style>
+    <Style Selector="Button.chip.on">
+      <Setter Property="Background" Value="{StaticResource SelectBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource SelectBrush}" />
+      <Setter Property="Foreground" Value="#1A0E04" />
+    </Style>
     <Style Selector="Button.pill">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderBrush" Value="{StaticResource G700}" />

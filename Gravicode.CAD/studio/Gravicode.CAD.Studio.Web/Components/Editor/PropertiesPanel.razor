@@ -24,7 +24,7 @@
             <dt>Volume</dt><dd>@p.Volume.ToString("N1") @Unit()³</dd>
             <dt>@S.T("Surface", "Luas")</dt><dd>@p.Area.ToString("N1") @Unit()²</dd>
             <dt>@S.T("Size", "Ukuran")</dt><dd>@($"{bb.Size.X:0.##} × {bb.Size.Y:0.##} × {bb.Size.Z:0.##}")</dd>
-            <dt>@S.T("Centroid", "Centroid")</dt><dd>@($"{p.Centroid.X:0.##}, {p.Centroid.Y:0.##}, {p.Centroid.Z:0.##}")</dd>
+            <dt>@S.T("Centroid", "Centroid")</dt><dd>@($"{Nz(p.Centroid.X):0.##}, {Nz(p.Centroid.Y):0.##}, {Nz(p.Centroid.Z):0.##}")</dd>
             <dt>@S.T("Triangles", "Segitiga")</dt><dd>@s.Mesh.TriangleCount.ToString("N0")</dd>
             <dt>@S.T("Steel", "Baja")</dt><dd>@((p.Volume * 7.85e-3).ToString("N0")) g</dd>
         </dl>
@@ -88,6 +88,8 @@
 
 @code {
     private string Unit() => S.Document.Units.Symbol();
+    /// <summary>Rounds away "-0" (tiny negative values print as -0).</summary>
+    private static double Nz(double v) => Math.Abs(v) < 5e-3 ? 0 : v;
     private static double D(ChangeEventArgs e) => double.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : 0;
 
     private RenderFragment LayerSelect(string current, Action<string> onChange) => __builder =>

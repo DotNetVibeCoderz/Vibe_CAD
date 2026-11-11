@@ -33,7 +33,14 @@ view.Frame += (_, _) => orbit.Apply();
 - **PBR materials** from each body's colour, metallic and roughness.
 - **Feature edges** as line geometry (toggle with `ShowEdges`).
 - **Grid** sized to the model.
-- `ApplyCamera(OrbitCamera)` reuses cameras from the software renderer; `ToWorld(Vec3)` converts points.
+- **Clip planes** sized to the model, so millimetre models of any size stay visible.
+- `SetHighlight(indices)` tints bodies (and their edges) as selected without rebuilding the scene; indices count
+  visible, non-empty bodies in model order (`BodyCount`).
+- `ApplyCamera(OrbitCamera)` reuses cameras from the software renderer; `ToWorld(Vec3)` / `ToCad(Vector3)` convert
+  between CAD (Z-up) and ThreeNet (Y-up) space.
+
+Rebuild the scene (`SetModel`) from the `ThreeNetView.Frame` callback in interactive apps: it runs between frames,
+so the renderer never draws a half-replaced scene.
 
 ## Standalone window
 

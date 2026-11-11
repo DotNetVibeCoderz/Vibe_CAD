@@ -21,7 +21,8 @@ Status of each item is tracked in [Progress.md](Progress.md).
 ### Studio next
 - [x] Grips, TRIM/EXTEND/FILLET/CHAMFER, hatch, blocks, PLOT (scaled PDF/SVG with title block)
 - [ ] Paper-space layouts with multiple viewports; polyline arc segments (bulges) instead of tessellated arcs
-- [ ] Picking and gizmos in the 3D pane; sketch-on-face; parametric history for solids
+- [x] Picking and gizmos in the 3D pane (move / rotate, both editions)
+- [ ] Sketch-on-face; parametric history for solids; scale gizmo and plane handles
 - [ ] Signed/notarised installers; auto-update
 
 ## v1.1 — Exact solids

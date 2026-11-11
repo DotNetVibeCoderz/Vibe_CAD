@@ -62,7 +62,7 @@ Bantuan: **F3** object snap (endpoint, midpoint, center, quadrant, intersection)
 | Anotasi | DIMLINEAR (DLI) |
 | Block | BLOCK (B), INSERT (I) |
 | Keluaran | PLOT (PRINT) |
-| Solid | BOX, CYLINDER (CYL), CONE, SPHERE, TORUS (TOR), GEAR, EXTRUDE (EXT, bentuk bersarang jadi lubang), REVOLVE (REV), UNION (UNI), SUBTRACT (SU), INTERSECT (IN), ELEVATE (EL) |
+| Solid | BOX, CYLINDER (CYL), CONE, SPHERE, TORUS (TOR), GEAR, EXTRUDE (EXT, bentuk bersarang jadi lubang), REVOLVE (REV), UNION (UNI), SUBTRACT (SU), INTERSECT (IN), ELEVATE (EL), 3DMOVE (3M), 3DROTATE (3R) |
 | Periksa | DIST (DI), AREA (AA), MASSPROP (MP), LIST (LI) |
 | Layer | LAYER (LA: New/Set/On/Off/Lock/Unlock/List), COLOR (COL) |
 | Tampilan | ZOOM (Z), VIEW3D, PLAN, GRID, ORTHO, OSNAP, SELECTALL |
@@ -92,6 +92,26 @@ Operasi boolean memakai kernel Rust bila tersedia (lihat status bar).
   memecah referensi kembali menjadi objek. Block ikut tersimpan di `.gcproj`.
 
 ![Grip di desktop](../images/studio-desktop-drafting.png)
+
+## Seleksi 3D dan gizmo
+
+![Gizmo web](../images/studio-web-gizmo.png)
+
+Di panel 3D, **klik** memilih solid di bawah kursor (Shift/Ctrl menambah atau mengurangi, klik ruang kosong
+mengosongkan); seret tetap untuk orbit kamera. Solid terpilih menyala oranye di 3D dan di denah, dan seleksinya sama
+dengan tampilan 2D serta semua perintah (`SUBTRACT`, `MASSPROP`, …).
+
+Bilah di kiri atas panel 3D mengganti gizmo:
+
+- **PINDAH**: seret panah merah/hijau/biru untuk memindah seleksi sepanjang X, Y atau Z. Langkahnya mengikuti ukuran
+  grid (status bar `GRID`); tahan **Alt** untuk gerakan bebas.
+- **PUTAR**: seret cincin untuk memutar seleksi pada sumbu itu melalui pusatnya, per 15° (Alt = bebas).
+- **PILIH**: tanpa gizmo, hanya memilih.
+
+Setiap seretan adalah satu langkah undo. Dari keyboard: `3DMOVE` (perpindahan `dx,dy,dz`) dan `3DROTATE` (sumbu
+X/Y/Z, sudut). Edisi desktop menggambar gizmo yang sama di atas tampilan GPU:
+
+![Gizmo desktop](../images/studio-desktop-gizmo.png)
 
 ## Plotting
 

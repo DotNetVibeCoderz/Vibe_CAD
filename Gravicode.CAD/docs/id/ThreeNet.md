@@ -35,6 +35,15 @@ view.Frame += (_, _) => orbit.Apply();
 - **Grid** menyesuaikan ukuran model.
 - `ApplyCamera(OrbitCamera)` memakai kamera dari software renderer; `ToWorld(Vec3)` mengonversi titik.
 
+### Seleksi dan pembaruan
+
+- `SetHighlight(indeks)` mewarnai body (dan tepinya) sebagai terpilih tanpa membangun ulang scene; indeks menghitung
+  body yang terlihat dan tidak kosong sesuai urutan model (`BodyCount`).
+- `ToWorld(Vec3)` / `ToCad(Vector3)` mengonversi antara ruang CAD (Z-atas) dan ThreeNet (Y-atas); clip plane kamera
+  menyesuaikan ukuran model.
+- Pada aplikasi interaktif, panggil `SetModel` dari callback `ThreeNetView.Frame`: callback itu berjalan di antara
+  frame sehingga renderer tidak pernah menggambar scene yang setengah diganti.
+
 ## Jendela mandiri
 
 ```csharp

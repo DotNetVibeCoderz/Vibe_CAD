@@ -19,6 +19,8 @@ public static partial class StudioCommands
         R("HATCH", ["H", "BHATCH"], "Draw", "Fills closed areas with a pattern (ANSI31, ANSI37) or solid colour", HatchCmd);
         R("BLOCK", ["B"], "Blocks", "Turns selected objects into a named block", BlockCmd);
         R("INSERT", ["I"], "Blocks", "Places a block (scale and rotation)", InsertCmd);
+        R("3DMOVE", ["3M"], "Solid", "Moves solids by a 3D displacement dx,dy,dz (or drag the gizmo in the 3D view)", Move3DCmd);
+        R("3DROTATE", ["3R"], "Solid", "Rotates solids about the X, Y or Z axis through their centre", Rotate3DCmd);
         R("PLOT", ["PRINT"], "Output", "Plots the drawing to a PDF or SVG sheet (A4–A0) with scale and title block", PlotCmd);
     }
 
@@ -285,6 +287,37 @@ public static partial class StudioCommands
         yield return Prompt.Distance("Specify rotation angle", at, 0, p => [new BlockRefEntity(def, at, sc, sc, (p - at).Angle)]);
         double rot = c.IsEnd ? 0 : c.Input is Input.PointInput pt ? (pt.Value - at).Angle : Units.Deg(c.Number);
         AddEntity(c, new BlockRefEntity(def, at, sc, sc, rot), "Insert");
+    }
+
+    // ===================================================================== 3D move / rotate
+
+    private static IEnumerable<Prompt> Move3DCmd(CommandContext c)
+    {
+        foreach (var p in RequireSelection(c, "Select solids")) yield return p;
+        var ids = c.SelectedSolids.Select(s => s.Id).ToList();
+        if (ids.Count == 0) { c.Print("  Select solids."); yield break; }
+        yield return Prompt.Text("Displacement dx,dy,dz");
+        var parts = c.Text.Split(',');
+        if (parts.Length is < 2 or > 3 || !parts.All(x => double.TryParse(x, NumberStyles.Float, InvC, out _)))
+        { c.Print("  Enter a displacement like 10,0,25."); yield break; }
+        var v = parts.Select(x => double.Parse(x, NumberStyles.Float, InvC)).ToArray();
+        var delta = new Vec3(v[0], v[1], v.Length > 2 ? v[2] : 0);
+        Solid3D.Transform(c.Doc, ids, Mat4.Translation3(delta), "3D move");
+        c.Print($"  Moved {ids.Count} solid(s).");
+    }
+
+    private static IEnumerable<Prompt> Rotate3DCmd(CommandContext c)
+    {
+        foreach (var p in RequireSelection(c, "Select solids")) yield return p;
+        var ids = c.SelectedSolids.Select(s => s.Id).ToList();
+        if (ids.Count == 0) { c.Print("  Select solids."); yield break; }
+        yield return Prompt.Keyword("Rotation axis <Z>", "X", "Y", "Z");
+        var axis = Solid3D.Axis(c.Keyword ?? "Z");
+        yield return Prompt.Distance("Angle (degrees)", null, 90);
+        double ang = c.IsEnd ? 90 : c.Number;
+        var pivot = Solid3D.Bounds(c.Doc, ids).Center;
+        Solid3D.Transform(c.Doc, ids, Mat4.RotateAround(pivot, axis, Units.Deg(ang)), "3D rotate");
+        c.Print($"  Rotated {ids.Count} solid(s) {ang.ToString("0.##", InvC)}° about {c.Keyword ?? "Z"}.");
     }
 
     // ===================================================================== PLOT

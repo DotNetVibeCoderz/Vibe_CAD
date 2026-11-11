@@ -32,7 +32,15 @@
                 }
                 else
                 {
-                    <CadViewer Model="Model3D" Height="100%" Theme="dark" ShowGrid="true" />
+                    <CadViewer Model="Model3D" Height="100%" Theme="dark" ShowGrid="true" KeepViewOnUpdate="true"
+                               Selectable="true" Highlighted="Highlighted3D" GizmoMode="@_gizmo" GizmoSnap="S.Engine.Settings.GridSize"
+                               OnPick="OnPick3D" OnGizmo="OnGizmo3D" />
+                    <div class="gizmo-bar" role="toolbar" aria-label="@S.T("3D tools", "Alat 3D")">
+                        @foreach (var (mode, label, tip) in GizmoModes)
+                        {
+                            <button type="button" class="@(_gizmo == mode ? "on" : "")" title="@tip" @onclick="() => _gizmo = mode">@label</button>
+                        }
+                    </div>
                 }
             </section>
         }
@@ -54,6 +62,36 @@
     private Canvas2D? _canvas;
     private CadModel? _model;
     private (StudioDocument?, int) _modelKey;
+    private IReadOnlyList<StudioSolid> _bodies = [];
+    private string? _gizmo = "move";
+
+    private (string? Mode, string Label, string Tip)[] GizmoModes =>
+    [
+        (null, S.T("SELECT", "PILIH"), S.T("Click solids to select them (Shift adds)", "Klik solid untuk memilih (Shift menambah)")),
+        ("move", S.T("MOVE", "PINDAH"), S.T("Drag an arrow to move the selection along X, Y or Z (Alt = no snap)", "Seret panah untuk memindah seleksi sepanjang X, Y atau Z (Alt = tanpa snap)")),
+        ("rotate", S.T("ROTATE", "PUTAR"), S.T("Drag a ring to rotate the selection in 15° steps (Alt = free)", "Seret cincin untuk memutar seleksi per 15° (Alt = bebas)")),
+    ];
+
+    /// <summary>Viewer body indices of the selected solids.</summary>
+    private int[] Highlighted3D
+    {
+        get
+        {
+            _ = Model3D;   // keeps _bodies in step with the model
+            var r = new List<int>();
+            for (int i = 0; i < _bodies.Count; i++) if (S.Engine.Selection.Contains(_bodies[i].Id)) r.Add(i);
+            return [.. r];
+        }
+    }
+
+    private void OnPick3D(CadPickEventArgs e) =>
+        S.Engine.PickObject(e.BodyIndex >= 0 && e.BodyIndex < _bodies.Count ? _bodies[e.BodyIndex].Id : null, e.Additive);
+
+    private void OnGizmo3D(CadGizmoEventArgs e)
+    {
+        if (e.Mode == "move") S.Engine.Move3D(e.Delta);
+        else S.Engine.Rotate3D(e.Axis, e.Angle, e.Pivot);
+    }
     private string? _toast;
     private CancellationTokenSource? _toastCts;
 
@@ -63,10 +101,12 @@
     {
         get
         {
-            var key = (S.Document, S.Document.Version);
+            // rebuild only when solids change (drawing edits and selection keep the 3D scene)
+            var key = (S.Document, S.Document.SolidsKey());
             if (_model is null || key != _modelKey)
             {
                 _model = S.Document.ToCadModel(includeDrawing: false);
+                _bodies = S.Document.ViewerSolids();
                 _modelKey = key;
             }
             return _model;

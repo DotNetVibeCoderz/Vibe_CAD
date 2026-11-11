@@ -14,6 +14,7 @@ using Gravicode.CAD.Geometry;
 using Gravicode.CAD.Rendering;
 using Gravicode.CAD.Studio.Catalog;
 using Gravicode.CAD.Studio.Commands;
+using Gravicode.CAD.Studio.Desktop.Controls;
 using Gravicode.CAD.Studio.IO;
 using Gravicode.CAD.Studio.UI;
 using Gravicode.CAD.ThreeNet;
@@ -34,6 +35,12 @@ public partial class MainWindow : Window
     private StudioDocument? _hooked, _shown3DDoc;
     private int _shown3DKey = -1, _shownHistory = -1;
     private CadModel? _pendingModel;
+    private IReadOnlyList<StudioSolid>? _pendingBodies;
+    private IReadOnlyList<StudioSolid> _bodies3D = [];   // body i in the 3D scene <-> solid
+    private bool _highlightDirty;
+    private string? _gizmoMode = "move";
+    private Point? _press3D;
+    private static readonly float Fov3D = 35f * MathF.PI / 180f;   // CadScene camera
     private bool _pendingRefit;
     private readonly object _sceneLock = new();
     private string _panelKey = "";
@@ -73,13 +80,40 @@ public partial class MainWindow : Window
         // scene edits are applied between frames, on the renderer's own callback (rebuilding mid-frame stalls ThreeNet)
         View3D.Frame += (_, _) =>
         {
-            CadModel? m; bool refit;
-            lock (_sceneLock) { m = _pendingModel; refit = _pendingRefit; _pendingModel = null; _pendingRefit = false; }
-            if (m != null) { _scene.SetModel(m); if (refit) SetCamera("iso"); }
+            CadModel? m; bool refit; IReadOnlyList<StudioSolid>? bodies;
+            lock (_sceneLock) { m = _pendingModel; refit = _pendingRefit; bodies = _pendingBodies; _pendingModel = null; _pendingRefit = false; _pendingBodies = null; }
+            if (m != null) { _scene.SetModel(m); _bodies3D = bodies ?? []; _highlightDirty = true; if (refit) SetCamera("iso"); }
+            if (_highlightDirty)
+            {
+                _highlightDirty = false;
+                var sel = new List<int>();
+                for (int i = 0; i < _bodies3D.Count; i++) if (_engine.Selection.Contains(_bodies3D[i].Id)) sel.Add(i);
+                _scene.SetHighlight(sel);
+            }
             _orbit.Apply();
+            // the gizmo overlay follows the camera every frame
+            Gizmo.Camera = CurrentCamera();
+            Gizmo.InvalidateVisual();
         };
+        Gizmo.Moved += d => _engine.Move3D(d);
+        Gizmo.Rotated += (axis, angle, pivot) => _engine.Rotate3D(axis, angle, pivot);
+        // a click (no drag) in the 3D view picks a solid; drags orbit the camera
+        View3D.AddHandler(PointerPressedEvent, (_, e) =>
+        {
+            _press3D = e.GetCurrentPoint(View3D).Properties.IsLeftButtonPressed ? e.GetPosition(View3D) : null;
+        }, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
+        View3D.AddHandler(PointerReleasedEvent, (_, e) =>
+        {
+            if (_press3D is not { } down) return;
+            _press3D = null;
+            var up = e.GetPosition(View3D);
+            if (Math.Abs(up.X - down.X) + Math.Abs(up.Y - down.Y) > 4) return;
+            var (o, d) = CurrentCamera().Ray(up);
+            _engine.Pick3D(o, d, e.KeyModifiers.HasFlag(KeyModifiers.Shift) || e.KeyModifiers.HasFlag(KeyModifiers.Control));
+        }, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
         View3D.RenderFailed += (_, _) => Dispatcher.UIThread.Post(() => { _gpuFailed = true; Update3D(force: true); });
         if (Program.Software3D) { _gpuFailed = true; Pane3D.Children.Remove(View3D); }
+        UpdateGizmoBar();
 
         CmdBox.KeyDown += OnCmdKeyDown;
         CmdBox.TextChanged += (_, _) => UpdateSuggestions();
@@ -157,6 +191,44 @@ public partial class MainWindow : Window
         string key = $"{Doc.GetHashCode()}|{Doc.Version}|{string.Join(",", _engine.Selection)}|{_id}|{Doc.CurrentLayer}";
         if (key != _panelKey) { _panelKey = key; BuildLeftPanel(); BuildRightPanel(); }
         Update3D();
+        UpdateGizmo();
+    }
+
+    // ================================================================== 3D picking & gizmo
+
+    private ViewCamera CurrentCamera() => new(_orbit.Target, _orbit.Distance, _orbit.Yaw, _orbit.Pitch, Fov3D, View3D.Bounds.Size);
+
+    /// <summary>Selection highlight + gizmo position/mode after any change (applied to the scene on the next frame).</summary>
+    private void UpdateGizmo()
+    {
+        _highlightDirty = true;
+        var ids = _engine.SelectedSolidIds;
+        bool usable = !_gpuFailed && _view != "2d" && ids.Count > 0 && !_engine.IsBusy;
+        Gizmo.Mode = usable ? _gizmoMode : null;
+        Gizmo.Pivot = usable ? Solid3D.Bounds(Doc, ids).Center : null;
+        Gizmo.Snap = _engine.Settings.GridSize;
+        Gizmo.IsVisible = !_gpuFailed;
+        GizmoBar.IsVisible = !_gpuFailed && Doc.Solids.Count > 0;
+        Gizmo.InvalidateVisual();
+    }
+
+    private void UpdateGizmoBar()
+    {
+        GzSelect.Content = T("SELECT", "PILIH"); GzMove.Content = T("MOVE", "PINDAH"); GzRotate.Content = T("ROTATE", "PUTAR");
+        ToolTip.SetTip(GzSelect, T("Click solids to select them (Shift adds)", "Klik solid untuk memilih (Shift menambah)"));
+        ToolTip.SetTip(GzMove, T("Drag an arrow to move along X, Y or Z (Alt = no snap)", "Seret panah untuk memindah sepanjang X, Y atau Z (Alt = tanpa snap)"));
+        ToolTip.SetTip(GzRotate, T("Drag a ring to rotate in 15° steps (Alt = free)", "Seret cincin untuk memutar per 15° (Alt = bebas)"));
+        GzSelect.Classes.Set("on", _gizmoMode is null);
+        GzMove.Classes.Set("on", _gizmoMode == "move");
+        GzRotate.Classes.Set("on", _gizmoMode == "rotate");
+    }
+
+    private void OnGizmoMode(object? sender, RoutedEventArgs e)
+    {
+        var tag = (sender as Button)?.Tag as string;
+        _gizmoMode = string.IsNullOrEmpty(tag) ? null : tag;
+        UpdateGizmoBar();
+        UpdateGizmo();
     }
 
     private void SetView(string view)
@@ -185,6 +257,7 @@ public partial class MainWindow : Window
         bool refit = _shown3DDoc != Doc;
         _shown3DDoc = Doc; _shown3DKey = key;
         var model = Doc.ToCadModel(includeDrawing: false);
+        var bodies = Doc.ViewerSolids();
         if (_gpuFailed)
         {
             var img = SoftwareRenderer.Render(model, new Rendering.RenderOptions { Width = 1200, Height = 900 });
@@ -192,16 +265,11 @@ public partial class MainWindow : Window
             Fallback3D.Source = new Bitmap(ms);
             return;
         }
-        lock (_sceneLock) { _pendingModel = model; _pendingRefit |= refit; }
+        lock (_sceneLock) { _pendingModel = model; _pendingRefit |= refit; _pendingBodies = bodies; }
     }
 
     /// <summary>Changes whenever a visible solid's mesh, colour or material changes (drawing edits don't rebuild 3D).</summary>
-    private int SolidsKey()
-    {
-        var h = new HashCode();
-        foreach (var s in Doc.VisibleSolids) { h.Add(s.Id); h.Add(s.Mesh); h.Add(s.Color); h.Add(s.Metallic); h.Add(s.Roughness); }
-        return h.ToHashCode();
-    }
+    private int SolidsKey() => Doc.SolidsKey();
 
     private void SetCamera(string view)
     {
@@ -606,7 +674,8 @@ public partial class MainWindow : Window
             Prop(num, "Volume", Mono($"{p.Volume:N1} {unit}³"));
             Prop(num, T("Surface", "Luas"), Mono($"{p.Area:N1} {unit}²"));
             Prop(num, T("Size", "Ukuran"), Mono($"{bb.Size.X:0.##} × {bb.Size.Y:0.##} × {bb.Size.Z:0.##}"));
-            Prop(num, "Centroid", Mono($"{p.Centroid.X:0.##}, {p.Centroid.Y:0.##}, {p.Centroid.Z:0.##}"));
+            static double Nz(double v) => Math.Abs(v) < 5e-3 ? 0 : v;   // no "-0"
+            Prop(num, "Centroid", Mono($"{Nz(p.Centroid.X):0.##}, {Nz(p.Centroid.Y):0.##}, {Nz(p.Centroid.Z):0.##}"));
             Prop(num, T("Triangles", "Segitiga"), Mono(s.Mesh.TriangleCount.ToString("N0")));
             Prop(num, T("Steel", "Baja"), Mono($"{p.Volume * 7.85e-3:N0} g"));
             RightPanel.Children.Add(num);
@@ -801,6 +870,7 @@ public partial class MainWindow : Window
         Empty3DText.Text = T("Nothing to show in 3D yet.", "Belum ada yang tampil di 3D.");
         Empty3DHint.Text = T("Draw a closed shape and EXTRUDE it, or start with BOX.", "Gambar bentuk tertutup lalu EXTRUDE, atau mulai dengan BOX.");
         Tag2D.Text = T("TOP · MODEL", "ATAS · MODEL");
+        UpdateGizmoBar();
         BuildTabs();
         BuildCards();
     }
@@ -1031,6 +1101,17 @@ public partial class MainWindow : Window
         foreach (var cmd in parts.Skip(1))
         {
             if (cmd.StartsWith("view:")) SetView(cmd[5..]);
+            else if (cmd.StartsWith("pick:"))
+            {
+                // pick through the screen position of solid N's centre — exercises projection + ray + raycast
+                await Task.Delay(1500);
+                var solid = Doc.Solids[int.Parse(cmd[5..], CultureInfo.InvariantCulture)];
+                var cam = CurrentCamera();
+                var (pt, _) = cam.Project(solid.Mesh.Bounds.Center);
+                var (o, dir) = cam.Ray(pt);
+                _engine.Pick3D(o, dir);
+            }
+            else if (cmd.StartsWith("mode:")) { _gizmoMode = cmd[5..] == "select" ? null : cmd[5..]; UpdateGizmoBar(); UpdateGizmo(); }
             else if (cmd.StartsWith("type:")) { CmdBox.Text = cmd[5..]; CmdBox.CaretIndex = CmdBox.Text.Length; }
             else _engine.Submit(cmd);
             await Task.Delay(250);

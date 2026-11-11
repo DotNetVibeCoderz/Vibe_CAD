@@ -28,6 +28,20 @@ Membutuhkan render mode interaktif (Server, WebAssembly atau Auto). Komponen men
 | `Theme` | `dark` | `dark` atau `light` |
 | `ShowEdges`, `ShowGrid`, `ShowToolbar`, `AutoRotate` | `true, true, true, false` | |
 | `OnLoaded` | — | callback berisi model yang dimuat |
+| `KeepViewOnUpdate` | `false` | pertahankan kamera saat `Model` berubah (editor), bukan mem-fit setiap model baru |
+| `Selectable` | `false` | klik (tanpa seret) memicu `OnPick` berisi indeks body (-1 = ruang kosong), titik kena dan Shift/Ctrl |
+| `Highlighted` | — | indeks body yang digambar terpilih (pendar dan tepi oranye) |
+| `GizmoMode` | `null` | `"move"` (panah sumbu) atau `"rotate"` (cincin sumbu) pada body yang di-highlight |
+| `GizmoSnap` | `0` | langkah geser dalam satuan model; rotasi snap per 15°; Alt untuk seret bebas |
+| `OnGizmo` | — | seret selesai: `Mode`, `Delta` (geser) atau `Axis` + `Angle` + `Pivot` (putar), ruang CAD |
+
+Indeks body menghitung body model yang terlihat dan tidak kosong, berurutan. Selama gizmo diseret, body terpilih
+bergerak langsung di browser; terapkan perubahannya di `OnGizmo` lalu kirim model baru — model itu menggantikan pratinjau.
+
+```razor
+<CadViewer Model="_model" KeepViewOnUpdate="true" Selectable="true" Highlighted="_selected"
+           GizmoMode="move" GizmoSnap="5" OnPick="e => Toggle(e.BodyIndex)" OnGizmo="Terapkan" />
+```
 
 Method: `SetViewAsync("iso" | "front" | "top" | "right")`, `FitAsync()`, `ToggleEdgesAsync()`, `SnapshotAsync()` (data URL PNG), `RefreshAsync()` setelah mengubah model di tempat.
 

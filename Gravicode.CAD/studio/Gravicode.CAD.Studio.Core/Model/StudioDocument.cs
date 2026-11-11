@@ -159,6 +159,18 @@ public sealed class StudioDocument
         return s;
     }
 
+    /// <summary>Changes whenever a visible solid's mesh, colour or material changes — 3D views rebuild only then
+    /// (drawing edits and selection changes leave it alone).</summary>
+    public int SolidsKey()
+    {
+        var h = new HashCode();
+        foreach (var s in VisibleSolids) { h.Add(s.Id); h.Add(s.Mesh); h.Add(s.Color); h.Add(s.Metallic); h.Add(s.Roughness); }
+        return h.ToHashCode();
+    }
+
+    /// <summary>Solids in the order 3D viewers receive them (visible, non-empty) — index i is body i in the viewer.</summary>
+    public IReadOnlyList<StudioSolid> ViewerSolids() => [.. VisibleSolids.Where(s => !s.Mesh.IsEmpty)];
+
     public IEnumerable<StudioEntity> VisibleEntities => Entities.Where(e => LayerOf(e.Layer).Visible);
     public IEnumerable<StudioSolid> VisibleSolids => Solids.Where(s => LayerOf(s.Layer).Visible);
 
@@ -177,7 +189,7 @@ public sealed class StudioDocument
     public CadModel ToCadModel(bool includeDrawing = true)
     {
         var m = new CadModel(Name) { Units = Units };
-        foreach (var s in VisibleSolids) m.Bodies.Add(s.ToBody());
+        foreach (var s in ViewerSolids()) m.Bodies.Add(s.ToBody());
         if (includeDrawing)
             foreach (var e in VisibleEntities)
                 foreach (var (prim, layer, color) in Geometry2D.Primitives(e.Geometry))
