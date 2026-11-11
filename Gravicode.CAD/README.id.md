@@ -91,13 +91,15 @@ dotnet new cad-console -n PartSaya     # juga: cad-webapi cad-blazor cad-wpf cad
 
 ## Gravicode CAD Studio
 
-Aplikasi desain CAD lengkap di atas pustaka ini — baris perintah ala AutoCAD, ribbon, layer, snap, drafting 2D,
-solid 3D dengan boolean, 8 template dan 18 contoh dari 17 industri. Dua edisi, satu engine:
+Aplikasi desain CAD lengkap di atas pustaka ini — baris perintah ala AutoCAD, ribbon, layer, snap dan grip, drafting 2D
+dengan TRIM/EXTEND/FILLET/CHAMFER, hatch, block, PLOT ke lembar PDF/SVG berskala, solid 3D dengan boolean, 8 template
+dan 18 contoh dari 17 industri. Dua edisi, satu engine:
 
 | Web (Blazor) | Desktop (Avalonia + ThreeNet) |
 |---|---|
 | ![Studio web](docs/images/studio-web-editor.png) | ![Studio desktop](docs/images/studio-desktop-editor.png) |
 | ![Layar awal web](docs/images/studio-web-start.png) | ![Contoh desktop](docs/images/studio-desktop-samples.png) |
+| ![Drafting di web](docs/images/studio-web-drafting.png) | ![Grip di desktop](docs/images/studio-desktop-drafting.png) |
 
 ```bash
 dotnet run --project studio/Gravicode.CAD.Studio.Web        # http://localhost:5190

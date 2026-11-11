@@ -57,9 +57,11 @@ Bantuan: **F3** object snap (endpoint, midpoint, center, quadrant, intersection)
 
 | Kelompok | Perintah (alias) |
 |---|---|
-| Gambar | LINE (L), PLINE (PL), RECTANG (REC), CIRCLE (C), ARC (A), POLYGON (POL), SPLINE (SPL), POINT (PO), TEXT (T) |
-| Ubah | MOVE (M), COPY (CO), ROTATE (RO), SCALE (SC), MIRROR (MI), OFFSET (O), ARRAY (AR, persegi/polar), EXPLODE (X), ERASE (E) |
+| Gambar | LINE (L), PLINE (PL), RECTANG (REC), CIRCLE (C), ARC (A), POLYGON (POL), SPLINE (SPL), POINT (PO), TEXT (T), HATCH (H) |
+| Ubah | MOVE (M), COPY (CO), ROTATE (RO), SCALE (SC), MIRROR (MI), OFFSET (O), ARRAY (AR, persegi/polar), EXPLODE (X), ERASE (E), TRIM (TR), EXTEND (EX), FILLET (F), CHAMFER (CHA) |
 | Anotasi | DIMLINEAR (DLI) |
+| Block | BLOCK (B), INSERT (I) |
+| Keluaran | PLOT (PRINT) |
 | Solid | BOX, CYLINDER (CYL), CONE, SPHERE, TORUS (TOR), GEAR, EXTRUDE (EXT, bentuk bersarang jadi lubang), REVOLVE (REV), UNION (UNI), SUBTRACT (SU), INTERSECT (IN), ELEVATE (EL) |
 | Periksa | DIST (DI), AREA (AA), MASSPROP (MP), LIST (LI) |
 | Layer | LAYER (LA: New/Set/On/Off/Lock/Unlock/List), COLOR (COL) |
@@ -69,11 +71,44 @@ Bantuan: **F3** object snap (endpoint, midpoint, center, quadrant, intersection)
 
 Operasi boolean memakai kernel Rust bila tersedia (lihat status bar).
 
+## Edit drafting, grip, hatch dan block
+
+![Drafting](../images/studio-web-drafting.png)
+
+- **TRIM / EXTEND** bekerja dalam mode cepat: semua objek yang terlihat menjadi tepi pemotong atau batas. Pilih
+  bagian yang dibuang (TRIM) atau ujung yang diperpanjang (EXTEND); kanvas menampilkan pratinjau di bawah kursor.
+  Objek yang tidak dipotong apa pun akan terhapus. Mendukung garis, busur, lingkaran dan polyline (terbuka/tertutup).
+- **FILLET / CHAMFER** menyambung dua garis: `R` / `D` mengatur radius atau dua jarak (diingat antar-perintah),
+  radius 0 membuat sudut tajam, dan `P` (Polyline) membulatkan atau memotong semua sudut polyline sekaligus.
+- **Grip**: pilih objek saat tidak ada perintah berjalan dan grip biru muncul (hingga 100 objek). Klik grip, gerakkan,
+  klik lagi untuk meletakkan — ujung dan tengah garis, pusat dan kuadran lingkaran, ujung/tengah/pusat busur,
+  sudut polyline, ujung dimensi dan posisi garis dimensi. Esc membatalkan.
+- **HATCH (H)**: klik di dalam area tertutup — bentuk tertutup terkecil di sekitar titik menjadi batas, dan bentuk
+  tertutup di dalamnya menjadi pulau (island). `S` memilih batas, `P` memilih pola (ANSI31 garis 45°, ANSI37
+  arsiran silang, SOLID isian penuh), `Scale` dan `Angle` mengaturnya. Skala bawaan otomatis: sekitar 40 garis
+  melintang area.
+- **BLOCK (B)** mengubah objek terpilih menjadi block bernama (nama → titik dasar → objek); **INSERT (I)**
+  menempatkannya dengan skala dan rotasi. Mendefinisikan ulang block memperbarui semua referensinya; EXPLODE
+  memecah referensi kembali menjadi objek. Block ikut tersimpan di `.gcproj`.
+
+![Grip di desktop](../images/studio-desktop-drafting.png)
+
+## Plotting
+
+**PLOT** (tab Output, atau ketik) mencetak ruang model ke lembar ISO:
+kertas A4–A0 → orientasi → area (Extents atau Window) → skala (`Fit`, `1:50`, `2:1`, …) → title block →
+PDF atau SVG. Satuan gambar dihormati (gambar dalam meter pada 1:100 dicetak 10 mm per meter). Title block berisi
+nama gambar, skala, lembar, satuan dan tanggal; dimensi memakai pena biru. Edisi web mengunduh file, edisi desktop
+menanyakan lokasi penyimpanan.
+
+![Plot](../images/studio-plot.png)
+
 ## File
 
 - **Proyek**: `.gcproj` — JSON terkompresi gzip berisi layer, entitas gambar dan solid.
 - **Buka / sisipkan**: STEP, IGES, STL, OBJ, glTF/GLB, 3MF, DXF, SVG.
-- **Ekspor** (tab Output): STEP, STL, GLB, 3MF, DXF, SVG, PDF dan render PNG
+- **Ekspor** (tab Output): STEP, STL, GLB, 3MF, DXF, SVG, PDF dan render PNG. Dimensi, hatch dan block dipecah
+  menjadi garis, polyline dan teks saat ekspor sehingga tetap ada di semua format
   (plot blueprint bila gambar tidak punya solid).
 
 ## Template dan contoh

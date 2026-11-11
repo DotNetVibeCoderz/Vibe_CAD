@@ -23,7 +23,11 @@ public static class ProjectFile
     };
 
     private sealed record Dto(int Version, string App, string Name, string Units, string? Description, string? Category,
-        List<Layer> Layers, string CurrentLayer, List<EntityDto> Entities, List<SolidDto> Solids, Dictionary<string, string> Properties);
+        List<Layer> Layers, string CurrentLayer, List<EntityDto> Entities, List<SolidDto> Solids, Dictionary<string, string> Properties,
+        List<BlockDto>? Blocks = null);
+
+    /// <summary>Block definition: its objects stored like model-space entities (relative to the base point).</summary>
+    private sealed record BlockDto(string Name, List<EntityDto> Items, string? Description = null);
 
     private sealed record EntityDto(Guid Id, string Layer, string? Color, string Kind, double[] V, string? Text = null, bool Closed = false);
     private sealed record SolidDto(Guid Id, string Name, string Layer, string Color, double Metallic, double Roughness, string Positions, string Indices);
@@ -36,7 +40,9 @@ public static class ProjectFile
             [.. doc.Solids.Select(s => new SolidDto(s.Id, s.Name, s.Layer, s.Color, s.Metallic, s.Roughness,
                 Convert.ToBase64String(MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(s.Mesh.Positions))),
                 Convert.ToBase64String(MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(s.Mesh.Indices)))))],
-            doc.Properties);
+            doc.Properties,
+            doc.Blocks.Count == 0 ? null : [.. doc.Blocks.Values.Select(b => new BlockDto(b.Name,
+                [.. b.Items.Select(i => ToDto(new StudioEntity(Guid.Empty, i.Layer, i.Geometry, i.Color))).OfType<EntityDto>()], b.Description))]);
         using var ms = new MemoryStream();
         using (var gz = new GZipStream(ms, CompressionLevel.Optimal, leaveOpen: true))
             JsonSerializer.Serialize(gz, dto, Json);
@@ -64,7 +70,11 @@ public static class ProjectFile
         };
         doc.Layers.Clear();
         doc.Layers.AddRange(dto.Layers);
-        foreach (var e in dto.Entities) if (FromDto(e) is { } g) doc.Entities.Add(new StudioEntity(e.Id, e.Layer, g, e.Color));
+        // blocks first: references look their definition up by name (a block may contain earlier blocks)
+        foreach (var b in dto.Blocks ?? [])
+            doc.Blocks[b.Name] = new BlockDefinition(b.Name,
+                b.Items.Select(i => FromDto(i, doc.Blocks) is { } g ? new BlockItem(g, i.Layer, i.Color) : null).OfType<BlockItem>(), b.Description);
+        foreach (var e in dto.Entities) if (FromDto(e, doc.Blocks) is { } g) doc.Entities.Add(new StudioEntity(e.Id, e.Layer, g, e.Color));
         foreach (var sd in dto.Solids)
         {
             var pos = MemoryMarshal.Cast<byte, Vec3>(Convert.FromBase64String(sd.Positions)).ToArray();
@@ -92,10 +102,14 @@ public static class ProjectFile
         TextEntity t => new(e.Id, e.Layer, e.Color, "text", [t.Position.X, t.Position.Y, t.Height], t.Text),
         PointEntity pt => new(e.Id, e.Layer, e.Color, "point", [pt.Position.X, pt.Position.Y]),
         DimensionEntity d => new(e.Id, e.Layer, e.Color, "dim", [d.A.X, d.A.Y, d.B.X, d.B.Y, d.Offset, d.TextHeight]),
+        // hatch: [scale, angle, loopCount, n0, x, y, …, n1, x, y, …]
+        HatchEntity h => new(e.Id, e.Layer, e.Color, "hatch",
+            [h.Scale, h.Angle, h.Loops.Count, .. h.Loops.SelectMany(l => l.SelectMany(q => new[] { q.X, q.Y }).Prepend(l.Count))], h.Pattern),
+        BlockRefEntity b => new(e.Id, e.Layer, e.Color, "insert", [b.Position.X, b.Position.Y, b.ScaleX, b.ScaleY, b.Rotation], b.Block.Name),
         _ => null
     };
 
-    private static DrawingEntity? FromDto(EntityDto e)
+    private static DrawingEntity? FromDto(EntityDto e, IReadOnlyDictionary<string, BlockDefinition> blocks)
     {
         var v = e.V;
         return e.Kind switch
@@ -107,8 +121,24 @@ public static class ProjectFile
             "text" => new TextEntity(new(v[0], v[1]), e.Text ?? "", v[2]),
             "point" => new PointEntity(new(v[0], v[1])),
             "dim" => new DimensionEntity(new(v[0], v[1]), new(v[2], v[3]), v[4], v[5]),
+            "hatch" => ReadHatch(v, e.Text),
+            "insert" => e.Text is { } bn && blocks.TryGetValue(bn, out var def) ? new BlockRefEntity(def, new(v[0], v[1]), v[2], v[3], v[4]) : null,
             _ => null
         };
+    }
+
+    private static HatchEntity ReadHatch(double[] v, string? pattern)
+    {
+        var loops = new List<IReadOnlyList<Vec2>>();
+        int k = 3;
+        for (int l = 0; l < (int)v[2] && k < v.Length; l++)
+        {
+            int n = (int)v[k++];
+            var pts = new Vec2[n];
+            for (int i = 0; i < n; i++, k += 2) pts[i] = new Vec2(v[k], v[k + 1]);
+            loops.Add(pts);
+        }
+        return new HatchEntity(loops, pattern ?? "ANSI31", v[0], v[1]);
     }
 
     // ---------------- interchange ----------------

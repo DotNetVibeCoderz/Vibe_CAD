@@ -163,8 +163,9 @@ class BlueprintCanvas {
     if (this.showGrid) this.#grid();
     this.#axes();
     for (const it of this.items) if (it.solid) this.#item(it, false);
-    for (const it of this.items) if (!it.solid) this.#item(it, false);
+    for (const it of this.items) if (!it.solid && it.kind !== 'grip') this.#item(it, false);
     for (const it of this.items) if (it.selected) this.#item(it, true);
+    for (const it of this.items) if (it.kind === 'grip') this.#item(it, false);
     g.setLineDash([6, 4]);
     for (const it of this.preview) this.#item({ ...it, color: C.preview }, false, true);
     g.setLineDash([]);
@@ -211,6 +212,26 @@ class BlueprintCanvas {
     g.globalAlpha = it.solid && !highlight ? 0.85 : 1;
     if (highlight) { g.setLineDash([7, 4]); g.shadowColor = 'rgba(255,138,61,0.55)'; g.shadowBlur = 6; }
     switch (it.kind) {
+      case 'grip': {
+        // screen-sized square, drawn without the selection dash
+        const [x, y] = this.toScreen(p[0], p[1]), r = it.hot ? 5.5 : 4.5;
+        g.setLineDash([]); g.shadowBlur = 0; g.globalAlpha = 1;
+        g.fillStyle = it.color; g.fillRect(x - r, y - r, 2 * r, 2 * r);
+        g.lineWidth = 1; g.strokeStyle = '#0A1A30'; g.strokeRect(x - r + 0.5, y - r + 0.5, 2 * r - 1, 2 * r - 1);
+        break;
+      }
+      case 'fill': {
+        // even-odd region: rings are consecutive runs of points
+        g.beginPath();
+        let k = 0;
+        for (const n of (it.rings || [p.length / 2])) {
+          for (let i = 0; i < n; i++, k++) { const [x, y] = this.toScreen(p[2 * k], p[2 * k + 1]); i === 0 ? g.moveTo(x, y) : g.lineTo(x, y); }
+          g.closePath();
+        }
+        g.globalAlpha = highlight ? 0.35 : 0.5; g.fill('evenodd');
+        g.globalAlpha = 1; g.stroke();
+        break;
+      }
       case 'poly': {
         g.beginPath();
         for (let i = 0; i < p.length; i += 2) { const [x, y] = this.toScreen(p[i], p[i + 1]); i === 0 ? g.moveTo(x, y) : g.lineTo(x, y); }

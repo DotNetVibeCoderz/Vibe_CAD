@@ -56,6 +56,7 @@ public partial class MainWindow : Window
             if (v == "view-2d") SetView("2d");
         };
         Hook(Doc);
+        _engine.FileProduced += (name, data, mime) => Dispatcher.UIThread.Post(async () => await SaveProducedAsync(name, data));
 
         Canvas.Engine = _engine;
         Canvas.CursorMoved += s =>
@@ -951,6 +952,21 @@ public partial class MainWindow : Window
             ShowToast($"{T("Exported", "Diekspor")} {ext.ToUpperInvariant()} · {bytes.Length / 1024.0:N0} KB");
         }
         catch (Exception ex) { ShowToast($"{T("Export failed", "Ekspor gagal")}: {ex.Message}"); }
+    }
+
+    /// <summary>Files made by commands (PLOT): ask where to save them.</summary>
+    private async Task SaveProducedAsync(string name, byte[] data)
+    {
+        var ext = System.IO.Path.GetExtension(name).TrimStart('.');
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = T("Save plot", "Simpan plot"), SuggestedFileName = name, DefaultExtension = ext,
+            FileTypeChoices = [new FilePickerFileType(ext.ToUpperInvariant()) { Patterns = [$"*.{ext}"] }]
+        });
+        var path = file?.TryGetLocalPath();
+        if (path is null) return;
+        await File.WriteAllBytesAsync(path, data);
+        ShowToast($"{T("Saved", "Disimpan")} {System.IO.Path.GetFileName(path)}");
     }
 
     private bool _closeConfirmed;

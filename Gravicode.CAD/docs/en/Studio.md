@@ -55,9 +55,11 @@ wheel zoom, middle-drag or Space+drag pan, double-middle-click zoom extents.
 
 | Group | Commands (aliases) |
 |---|---|
-| Draw | LINE (L), PLINE (PL), RECTANG (REC), CIRCLE (C), ARC (A), POLYGON (POL), SPLINE (SPL), POINT (PO), TEXT (T) |
-| Modify | MOVE (M), COPY (CO), ROTATE (RO), SCALE (SC), MIRROR (MI), OFFSET (O), ARRAY (AR, rectangular/polar), EXPLODE (X), ERASE (E) |
+| Draw | LINE (L), PLINE (PL), RECTANG (REC), CIRCLE (C), ARC (A), POLYGON (POL), SPLINE (SPL), POINT (PO), TEXT (T), HATCH (H) |
+| Modify | MOVE (M), COPY (CO), ROTATE (RO), SCALE (SC), MIRROR (MI), OFFSET (O), ARRAY (AR, rectangular/polar), EXPLODE (X), ERASE (E), TRIM (TR), EXTEND (EX), FILLET (F), CHAMFER (CHA) |
 | Annotate | DIMLINEAR (DLI) |
+| Blocks | BLOCK (B), INSERT (I) |
+| Output | PLOT (PRINT) |
 | Solids | BOX, CYLINDER (CYL), CONE, SPHERE, TORUS (TOR), GEAR, EXTRUDE (EXT, nested shapes become holes), REVOLVE (REV), UNION (UNI), SUBTRACT (SU), INTERSECT (IN), ELEVATE (EL) |
 | Inspect | DIST (DI), AREA (AA), MASSPROP (MP), LIST (LI) |
 | Layers | LAYER (LA: New/Set/On/Off/Lock/Unlock/List), COLOR (COL) |
@@ -67,11 +69,44 @@ wheel zoom, middle-drag or Space+drag pan, double-middle-click zoom extents.
 
 Booleans run on the Rust kernel when it is present (status bar shows the kernel).
 
+## Drafting edits, grips, hatches and blocks
+
+![Drafting](../images/studio-web-drafting.png)
+
+- **TRIM / EXTEND** work in quick mode: every visible object is a cutting edge or boundary. Pick the piece to
+  remove (TRIM) or the end to lengthen (EXTEND); the canvas previews the result under the cursor. Trimming an
+  object that nothing crosses erases it. Lines, arcs, circles and polylines (open or closed) are supported.
+- **FILLET / CHAMFER** join two lines: `R` / `D` set the radius or the two distances (remembered between runs),
+  radius 0 makes a sharp corner, and `P` (Polyline) rounds or bevels every corner of a polyline at once.
+- **Grips**: select objects while no command runs and blue grips appear (up to 100 objects). Click a grip, move,
+  click again to place it — line ends and midpoints, circle centres and quadrants, arc ends/middle/centre,
+  polyline corners, dimension ends and dimension-line position. Esc cancels.
+- **HATCH (H)**: click inside a closed area — the smallest closed shape around the point is the boundary and any
+  closed shapes inside it become islands. `S` selects boundaries, `P` picks the pattern (ANSI31 45° lines,
+  ANSI37 cross-hatch, SOLID fill), `Scale` and `Angle` adjust it. The default scale is automatic: about 40 lines
+  across the area.
+- **BLOCK (B)** turns selected objects into a named block (name → base point → objects); **INSERT (I)** places it
+  with a scale and rotation. Redefining a block updates every reference; EXPLODE breaks a reference back into its
+  objects. Blocks are saved in the `.gcproj`.
+
+![Desktop grips](../images/studio-desktop-drafting.png)
+
+## Plotting
+
+**PLOT** (Output tab, or type it) prints model space onto an ISO sheet:
+paper A4–A0 → orientation → area (Extents or a Window) → scale (`Fit`, `1:50`, `2:1`, …) → title block →
+PDF or SVG. One drawing unit becomes the given scale on paper (units are respected: a metre drawing at 1:100 is
+plotted 10 mm per metre). The title block shows the drawing name, scale, sheet, units and date; dimensions use a
+blue pen. The web edition downloads the file, the desktop edition asks where to save it.
+
+![Plot](../images/studio-plot.png)
+
 ## Files
 
 - **Project**: `.gcproj` — gzip-compressed JSON with layers, drawing entities and solids.
 - **Open / insert**: STEP, IGES, STL, OBJ, glTF/GLB, 3MF, DXF, SVG.
-- **Export** (Output tab): STEP, STL, GLB, 3MF, DXF, SVG, PDF and a PNG render
+- **Export** (Output tab): STEP, STL, GLB, 3MF, DXF, SVG, PDF and a PNG render. Dimensions, hatches and blocks are
+  exploded into lines, polylines and text on export so every format keeps them
   (a blueprint plot when the drawing has no solids).
 
 ## Templates and samples

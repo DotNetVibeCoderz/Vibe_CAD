@@ -67,6 +67,20 @@ public static class Geometry2D
 
     public static double Distance(DrawingEntity e, Vec2 p)
     {
+        if (e is BlockRefEntity br)
+        {
+            double bd = Vec2.Distance(br.Position, p);
+            foreach (var c in br.Children()) bd = Math.Min(bd, Distance(c.Geometry, p));
+            return bd;
+        }
+        if (e is HatchEntity h)
+        {
+            if (h.Contains(p)) return 0;
+            double hd = double.MaxValue;
+            foreach (var loop in h.Loops)
+                for (int i = 0; i < loop.Count; i++) hd = Math.Min(hd, DistanceToSegment(p, loop[i], loop[(i + 1) % loop.Count]));
+            return hd;
+        }
         if (e is TextEntity t)
         {
             var (mn, mx) = t.Extents();
@@ -112,6 +126,11 @@ public static class Geometry2D
                 break;
             case DimensionEntity d:
                 yield return (d.A, SnapKind.Endpoint); yield return (d.B, SnapKind.Endpoint); break;
+            case BlockRefEntity b:
+                yield return (b.Position, SnapKind.Endpoint);
+                foreach (var c in b.Children().Take(500))
+                    foreach (var sp in SnapPoints(c.Geometry)) yield return sp;
+                break;
             case TextEntity t: yield return (t.Position, SnapKind.Endpoint); break;
             case PointEntity pt: yield return (pt.Position, SnapKind.Endpoint); break;
         }
@@ -120,6 +139,12 @@ public static class Geometry2D
     /// <summary>Line segments of an entity (for intersection snap).</summary>
     public static IEnumerable<(Vec2 A, Vec2 B)> Segments(DrawingEntity e)
     {
+        if (e is BlockRefEntity b) { foreach (var c in b.Children()) foreach (var s in Segments(c.Geometry)) yield return s; yield break; }
+        if (e is HatchEntity h)
+        {
+            foreach (var loop in h.Loops) for (int i = 0; i < loop.Count; i++) yield return (loop[i], loop[(i + 1) % loop.Count]);
+            yield break;
+        }
         var pts = Polyline(e, 0.5);
         for (int i = 0; i + 1 < pts.Count; i++) yield return (pts[i], pts[i + 1]);
     }
@@ -189,6 +214,34 @@ public static class Geometry2D
                 }
         }
         return null;
+    }
+
+    /// <summary>
+    /// Breaks Studio-only objects (dimensions, hatches, block references) into library primitives — lines, arcs,
+    /// circles, polylines and text — for exporters, plotting and EXPLODE. Colour is the object's own colour, or null
+    /// to inherit from its parent.
+    /// </summary>
+    public static IEnumerable<(DrawingEntity Geometry, string? Layer, string? Color)> Primitives(DrawingEntity e)
+    {
+        switch (e)
+        {
+            case DimensionEntity d:
+                foreach (var (a, b) in d.Segments()) yield return (new LineEntity(a, b), null, null);
+                yield return (new TextEntity(d.TextPosition, d.Label, d.TextHeight), null, null);
+                break;
+            case HatchEntity h:
+                if (h.IsSolid) foreach (var loop in h.Loops) yield return (new PolylineEntity(loop, true), null, null);
+                else foreach (var (a, b) in h.Lines) yield return (new LineEntity(a, b), null, null);
+                break;
+            case BlockRefEntity br:
+                foreach (var c in br.Children())
+                    foreach (var (g, layer, color) in Primitives(c.Geometry))
+                        yield return (g, layer ?? (c.Layer == "0" ? null : c.Layer), color ?? c.Color);
+                break;
+            default:
+                yield return (e, null, null);
+                break;
+        }
     }
 
     /// <summary>Closed loops of selected entities (for extrude/revolve and area).</summary>

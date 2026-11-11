@@ -58,11 +58,12 @@ public sealed class BlueprintCanvas : Control
     {
         if (Engine is null) return;
         var doc = Engine.Document;
-        int sel = Engine.Selection.Aggregate(Engine.Selection.Count, (h, g) => h ^ g.GetHashCode());
+        // grips depend on the selection, the hot grip and whether a command is running
+        int sel = Engine.Selection.Aggregate(HashCode.Combine(Engine.Selection.Count, Engine.HotGrip, Engine.IsBusy), (h, g) => h ^ g.GetHashCode());
         if (force || doc != _shownDoc || doc.Version != _shownVersion || sel != _shownSelection)
         {
             _shownDoc = doc; _shownVersion = doc.Version; _shownSelection = sel;
-            _items = DisplayList.Build(doc, Engine.Selection);
+            _items = DisplayList.Build(Engine);
         }
         UpdatePreview();
         InvalidateVisual();
@@ -209,8 +210,9 @@ public sealed class BlueprintCanvas : Control
             if (Engine?.Settings.ShowGrid != false) DrawGrid(g);
             DrawAxes(g);
             foreach (var it in _items) if (it.Solid) DrawItem(g, it, false);
-            foreach (var it in _items) if (!it.Solid) DrawItem(g, it, false);
+            foreach (var it in _items) if (!it.Solid && it.Kind != "grip") DrawItem(g, it, false);
             foreach (var it in _items) if (it.Selected) DrawItem(g, it, true);
+            foreach (var it in _items) if (it.Kind == "grip") DrawItem(g, it, false);
             foreach (var it in _preview) DrawItem(g, it, false, preview: true);
             DrawWindow(g);
             DrawSnap(g);
@@ -269,6 +271,7 @@ public sealed class BlueprintCanvas : Control
 
     private static readonly IPen SelectPen = new Pen(new SolidColorBrush(Select), 2.2, new DashStyle([3.2, 1.8], 0));
     private static readonly IPen SelectGlow = new Pen(new SolidColorBrush(Select, 0.28), 6);
+    private static readonly IPen GripOutline = new Pen(new SolidColorBrush(Color.Parse("#0A1A30")), 1);
     private static readonly IPen PreviewPen = new Pen(new SolidColorBrush(PreviewColor), 1.35, new DashStyle([4.5, 3], 0));
 
     private void DrawItem(DrawingContext g, DisplayItem it, bool highlight, bool preview = false)
@@ -279,6 +282,33 @@ public sealed class BlueprintCanvas : Control
         var p = it.Points;
         switch (it.Kind)
         {
+            case "grip":
+                {
+                    var c = ToScreen(p[0], p[1]); double r = it.Hot ? 5.5 : 4.5;
+                    g.DrawRectangle(paint.Brush, GripOutline, new Rect(Math.Round(c.X) - r, Math.Round(c.Y) - r, 2 * r, 2 * r));
+                    break;
+                }
+            case "fill":
+                {
+                    var geo = new StreamGeometry();
+                    using (var k = geo.Open())
+                    {
+                        k.SetFillRule(FillRule.EvenOdd);
+                        int at = 0;
+                        foreach (var n in it.Rings ?? [p.Length / 2])
+                        {
+                            for (int i = 0; i < n; i++, at++)
+                            {
+                                var q = ToScreen(p[2 * at], p[2 * at + 1]);
+                                if (i == 0) k.BeginFigure(q, true); else k.LineTo(q);
+                            }
+                            k.EndFigure(true);
+                        }
+                    }
+                    var fill = new SolidColorBrush(((ISolidColorBrush)brush).Color, highlight ? 0.35 : 0.5);
+                    g.DrawGeometry(fill, pen, geo);
+                    break;
+                }
             case "poly":
             case "segs":
                 {

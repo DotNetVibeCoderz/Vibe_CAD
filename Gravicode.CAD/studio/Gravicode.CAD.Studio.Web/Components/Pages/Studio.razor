@@ -73,7 +73,15 @@
         }
     }
 
-    protected override void OnInitialized() => S.Changed += OnChanged;
+    protected override void OnInitialized()
+    {
+        S.Changed += OnChanged;
+        S.Engine.FileProduced += OnFileProduced;
+    }
+
+    // PLOT and other file-producing commands → browser download
+    private void OnFileProduced(string name, byte[] bytes, string mime) =>
+        _ = InvokeAsync(async () => { await DownloadAsync(name, bytes, mime); Toast($"{S.T("Downloaded", "Diunduh")} {name}"); });
 
     private void OnChanged() => InvokeAsync(StateHasChanged);
 
@@ -144,5 +152,5 @@
         try { await Task.Delay(3200, cts.Token); _toast = null; await InvokeAsync(StateHasChanged); } catch (TaskCanceledException) { }
     }
 
-    public void Dispose() { S.Changed -= OnChanged; _toastCts?.Cancel(); }
+    public void Dispose() { S.Changed -= OnChanged; S.Engine.FileProduced -= OnFileProduced; _toastCts?.Cancel(); }
 }

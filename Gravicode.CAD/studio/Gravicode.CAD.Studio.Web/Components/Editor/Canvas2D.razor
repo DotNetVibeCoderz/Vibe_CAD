@@ -37,7 +37,8 @@
         if (v == "zoom-extents") _ = InvokeAsync(ZoomExtentsAsync);
     }
 
-    private int SelectionHash => S.Engine.Selection.Aggregate(S.Engine.Selection.Count, (h, g) => h ^ g.GetHashCode());
+    // grips depend on selection, the hot grip and whether a command is running
+    private int SelectionHash => S.Engine.Selection.Aggregate(HashCode.Combine(S.Engine.Selection.Count, S.Engine.HotGrip, S.Engine.IsBusy), (h, g) => h ^ g.GetHashCode());
 
     public async Task PushSceneAsync(bool force = false)
     {
@@ -48,7 +49,7 @@
         int sel = SelectionHash;
         if (!force && doc == _shownDoc && doc.Version == _shownVersion && sel == _shownSelection) return;
         _shownDoc = doc; _shownVersion = doc.Version; _shownSelection = sel;
-        var items = Gravicode.CAD.Studio.UI.DisplayList.Build(doc, S.Engine.Selection);
+        var items = Gravicode.CAD.Studio.UI.DisplayList.Build(S.Engine);
         await _canvas.InvokeVoidAsync("setScene", items);
     }
 

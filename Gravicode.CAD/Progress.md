@@ -26,7 +26,7 @@ Legend: ✅ done · 🚧 in progress · ⏳ planned (see [PLAN.md](PLAN.md))
 ## Apps, packaging, docs
 | Item | Status |
 |---|---|
-| Tests | ✅ 85 passing (75 library + 10 studio) + 1 opt-in live LLM test |
+| Tests | ✅ 98 passing (75 library + 23 studio) + 1 opt-in live LLM test |
 | Console sample, DocGen tool | ✅ |
 | Templates (console, webapi, blazor, wpf, winforms, avalonia, maui) | ✅ |
 | Gallery — Blazor (18 samples, three.js) | ✅ |
@@ -38,8 +38,13 @@ Legend: ✅ done · 🚧 in progress · ⏳ planned (see [PLAN.md](PLAN.md))
 | Studio Desktop (Avalonia, `BlueprintCanvas`, ThreeNet GPU 3D + software fallback) | ✅ |
 | Studio catalog: 8 templates + 18 samples across 17 industries (Blender-made game props) | ✅ |
 | Studio release workflow: Windows setup + zip, Linux .deb + tar.gz, macOS .dmg + .app.zip, web zips | ✅ |
+| Studio drafting: TRIM / EXTEND / FILLET / CHAMFER (lines, arcs, circles, polylines; polyline mode), grips | ✅ |
+| Studio HATCH (pick point with islands, ANSI31 / ANSI37 / SOLID, auto scale), BLOCK / INSERT / EXPLODE | ✅ |
+| Studio PLOT: A4–A0, Fit or 1:N, window, title block, PDF / SVG; exports explode dims/hatches/blocks (DXF keeps them) | ✅ |
+| Studio 3D picking & gizmos, sketch-on-face, parametric history, paper-space layouts | ⏳ |
 
 ## Log
+- 2026-11-12 — Studio drafting stage: TRIM/EXTEND/FILLET/CHAMFER, grips (corner-only on tessellated polylines), HATCH with islands and auto scale, blocks, PLOT to scaled PDF/SVG with title block. Fixed: `;` as Enter in the interactive command line, DXF export dropped dimensions, exact keyword matches now beat prefixes.
 - 2026-11-11 — **1.0.1**: NuGet packages and `dotnet new` templates move to ThreeNet 0.12.1 and ship the `CadScene` clip-plane/background fixes and the software renderer's edge depth-bias fix. Studio 1.0.0 released with installers for Windows, Linux and macOS.
 - 2026-11-11 — Gravicode CAD Studio (web + desktop) added with docs, screenshots and the `gravicode-cad-studio-v*` release workflow. Fixed in ThreeNet 0.12.1 while embedding it: stale GPU buffers on recycled ids, FXC → DXC on Windows (first frame 16.6 s → 1 s), UI-friendly render loop. `CadScene` now fits near/far planes to the model and uses linear background colours.
 - 2026-11-11 — All modules implemented; Rust engine wired; live Claude text-to-CAD verified; galleries screenshotted; moved into the Vibe_CAD monorepo with CI.

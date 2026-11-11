@@ -12,6 +12,14 @@ public sealed class DraftSettings
     public bool ObjectSnap { get; set; } = true;
     public bool ShowGrid { get; set; } = true;
     public string CurrentColor { get; set; } = "ByLayer";
+    // remembered command options (as AutoCAD does between runs)
+    public double FilletRadius { get; set; } = 10;
+    public double ChamferA { get; set; } = 5;
+    public double ChamferB { get; set; } = 5;
+    public string HatchPattern { get; set; } = "ANSI31";
+    /// <summary>Hatch pattern scale; 0 = automatic (about 40 lines across the area, rounded to 1/2/5 steps).</summary>
+    public double HatchScale { get; set; }
+    public double HatchAngle { get; set; }
 }
 
 /// <summary>Command definition.</summary>
@@ -43,6 +51,10 @@ public sealed class CommandContext(CommandEngine engine)
     public IReadOnlyList<StudioEntity> SelectedEntities => [.. Doc.Entities.Where(e => Engine.Selection.Contains(e.Id))];
     public IReadOnlyList<StudioSolid> SelectedSolids => [.. Doc.Solids.Where(s => Engine.Selection.Contains(s.Id))];
     public bool HasSelection => Engine.Selection.Count > 0;
+
+    /// <summary>The drawing object under a picked point (null when nothing is close enough).</summary>
+    public StudioEntity? PickAt(Vec2 p) =>
+        Engine.Pick(p, Engine.EffectivePickTolerance) is { } id ? Doc.Entities.FirstOrDefault(e => e.Id == id) : null;
     public string? EntityColor => Settings.CurrentColor == "ByLayer" ? null : Settings.CurrentColor;
 }
 
@@ -77,6 +89,33 @@ public sealed partial class CommandEngine
 
     public event Action? StateChanged;
     public event Action<string>? ViewRequest;           // "zoom-extents", "view-3d", "view-2d", ...
+    /// <summary>A command produced a file for the user (PLOT): file name, bytes, MIME type. The web edition
+    /// downloads it, the desktop edition asks where to save it.</summary>
+    public event Action<string, byte[], string>? FileProduced;
+
+    /// <summary>Grip being dragged (shown red), or null.</summary>
+    public (Guid Entity, int Index)? HotGrip { get; private set; }
+
+    /// <summary>World-space pick radius from the last click (≈ 7 px); 0 until the first click.</summary>
+    public double PickTolerance { get; private set; }
+
+    /// <summary>Pick radius for commands; typed coordinates (scripts) fall back to a size relative to the drawing.</summary>
+    public double EffectivePickTolerance
+    {
+        get
+        {
+            if (PickTolerance > 0) return PickTolerance;
+            var bb = Document.Bounds;
+            return bb.IsEmpty ? 0.5 : Math.Max(1e-3, bb.Diagonal * 0.003);
+        }
+    }
+
+    internal void Deliver(string fileName, byte[] data, string mime)
+    {
+        if (FileProduced is null) { Print($"  {fileName} ready ({data.Length / 1024.0:N0} KB) — this host cannot save files."); return; }
+        FileProduced(fileName, data, mime);
+        Print($"  Output: {fileName} ({data.Length / 1024.0:N0} KB).");
+    }
 
     public IReadOnlyCollection<CommandInfo> Commands => [.. _commands.Values.Distinct()];
 
@@ -128,11 +167,12 @@ public sealed partial class CommandEngine
                 return;
             }
             var tokens = Tokenize(text);
-            Start(tokens[0], tokens.Skip(1));
+            // ";" is Enter inside an inline command line, as in scripts ("EXTRUDE L ; 25")
+            Start(tokens[0], tokens.Skip(1).Select(t => t == ";" ? "" : t));
             return;
         }
         Print($"{CurrentPrompt?.Display} {text}");
-        if (text.Length == 0) { Feed(new Input.EndInput()); return; }
+        if (text.Length == 0 || text == ";") { Feed(new Input.EndInput()); return; }
         var input = Parse(text, CurrentPrompt!);
         if (input is null) { Print($"  Invalid input \"{text}\" — {Hint(CurrentPrompt!)}"); Raise(); return; }
         Feed(input);
@@ -143,16 +183,59 @@ public sealed partial class CommandEngine
     {
         var info = Find(name.TrimStart('_', '.'));
         if (info is null) { Print($"Unknown command \"{name}\". Type HELP for a list."); Raise(); return false; }
+        Launch(info, args, remember: true);
+        return true;
+    }
+
+    private void Launch(CommandInfo info, IEnumerable<string>? args, bool remember)
+    {
         Cancel(silent: true);
         _active = info;
-        _lastCommand = info.Name;
+        if (remember) _lastCommand = info.Name;
         _queued.Clear();
         if (args != null) foreach (var a in args) _queued.AddLast(a);
-        Print($"Command: {info.Name}");
+        if (remember) Print($"Command: {info.Name}");
         _ctx = new CommandContext(this);
         _running = info.Run(_ctx).GetEnumerator();
         Advance();
-        return true;
+    }
+
+    // ===================================================================== grips
+
+    /// <summary>When idle with a selection, a click on a grip starts a stretch: the next click places it.</summary>
+    private bool TryStartGrip(Vec2 world, double tol)
+    {
+        if (_running != null || Selection.Count is 0 or > UI.DisplayList.MaxGripObjects) return false;
+        foreach (var e in Document.Entities)
+        {
+            if (!Selection.Contains(e.Id) || Document.LayerOf(e.Layer).Locked) continue;
+            var grips = Grips.Of(e.Geometry);
+            for (int i = 0; i < grips.Count; i++)
+                if (Vec2.Distance(grips[i], world) <= tol)
+                {
+                    var entity = e; int index = i; var at = grips[i];
+                    Launch(new CommandInfo("GRIP", [], "Edit", "Grip edit", c => GripEdit(c, entity, index, at)), null, remember: false);
+                    return true;
+                }
+        }
+        return false;
+    }
+
+    private IEnumerable<Prompt> GripEdit(CommandContext c, StudioEntity e, int index, Vec2 grip)
+    {
+        HotGrip = (e.Id, index);
+        try
+        {
+            yield return Prompt.Point("** STRETCH ** Specify stretch point", grip, p => Grips.Move(e.Geometry, index, p) is { } g ? [g] : [], allowEnd: true);
+            if (c.IsEnd) yield break;
+            if (Grips.Move(e.Geometry, index, c.Point) is not { } moved) { Print("  That would collapse the object."); yield break; }
+            Document.Edit("Grip edit", d =>
+            {
+                int k = d.Entities.FindIndex(x => x.Id == e.Id);
+                if (k >= 0) d.Entities[k] = d.Entities[k] with { Geometry = moved };
+            });
+        }
+        finally { HotGrip = null; }
     }
 
     /// <summary>Runs a whole script ("LINE 0,0 100,0 ;") line by line — used by samples, tests and macros.</summary>
@@ -173,6 +256,8 @@ public sealed partial class CommandEngine
     /// <summary>A click in model space (already snapped by the caller via <see cref="Snap"/>).</summary>
     public void Click(Vec2 world, double pickTolerance, bool additive = false)
     {
+        if (pickTolerance > 0) PickTolerance = pickTolerance;
+        if (_running == null && !additive && TryStartGrip(world, pickTolerance)) return;
         if (_running != null && CurrentPrompt is { } p)
         {
             switch (p.Kind)
@@ -292,7 +377,7 @@ public sealed partial class CommandEngine
                 if (!_running.MoveNext())
                 {
                     // like AutoCAD: the selection is consumed by the command (kept as "Previous")
-                    if (Selection.Count > 0 && _active?.Name != "SELECTALL") { _previous.Clear(); _previous.UnionWith(Selection); Selection.Clear(); }
+                    if (Selection.Count > 0 && _active?.Name is not ("SELECTALL" or "GRIP")) { _previous.Clear(); _previous.UnionWith(Selection); Selection.Clear(); }
                     _running.Dispose();
                     _running = null; _ctx = null; _active = null; CurrentPrompt = null;
                     _queued.Clear();
@@ -361,7 +446,8 @@ public sealed partial class CommandEngine
         // keywords first (match full word or leading capital letters)
         if (p.Keywords.Count > 0 && !char.IsDigit(text[0]) && text[0] is not '-' and not '@' and not '.')
         {
-            var kw = p.Keywords.FirstOrDefault(k => k.Equals(text, StringComparison.OrdinalIgnoreCase) || k.StartsWith(text, StringComparison.OrdinalIgnoreCase));
+            var kw = p.Keywords.FirstOrDefault(k => k.Equals(text, StringComparison.OrdinalIgnoreCase))
+                ?? p.Keywords.FirstOrDefault(k => k.StartsWith(text, StringComparison.OrdinalIgnoreCase));
             if (kw != null) return new Input.KeywordInput(kw);
         }
         switch (p.Kind)
@@ -447,6 +533,7 @@ public sealed partial class CommandEngine
     public SnapResult Snap(Vec2 cursor, double tolerance)
     {
         Cursor = cursor;
+        if (CurrentPrompt is { NoSnap: true }) { LastSnap = new SnapResult(cursor, SnapKind.None); return LastSnap.Value; }
         SnapResult result = new(cursor, SnapKind.None);
         if (Settings.ObjectSnap)
         {

@@ -5,7 +5,7 @@ using Gravicode.CAD.Geometry;
 namespace Gravicode.CAD.Studio.Commands;
 
 /// <summary>The built-in command set (names and aliases follow AutoCAD conventions).</summary>
-public static class StudioCommands
+public static partial class StudioCommands
 {
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
@@ -35,7 +35,7 @@ public static class StudioCommands
         R("ERASE", ["E", "DEL"], "Modify", "Erases objects", Erase);
         R("OFFSET", ["O"], "Modify", "Creates parallel copies of lines, arcs, circles and polylines", Offset);
         R("ARRAY", ["AR", "ARRAYRECT", "ARRAYPOLAR"], "Modify", "Rectangular or polar array of objects", Array);
-        R("EXPLODE", ["X"], "Modify", "Breaks polylines and rectangles into lines", Explode);
+        R("EXPLODE", ["X"], "Modify", "Breaks polylines into lines, and blocks, hatches and dimensions into their parts", Explode);
 
         // ---------- solids ----------
         R("BOX", [], "Solid", "Creates a box solid", Box);
@@ -71,6 +71,7 @@ public static class StudioCommands
         R("SELECTALL", ["ALL"], "Utility", "Selects every visible object", c => Simple(c, c.Engine.SelectAll));
         R("AI", ["TEXT2CAD", "GENERATE"], "AI", "Creates a part from a description (Claude when ANTHROPIC_API_KEY is set, offline otherwise)", Ai);
         R("HELP", ["?"], "Utility", "Lists commands", Help);
+        RegisterDrafting(e);
     }
 
     // ===================================================================== helpers
@@ -434,19 +435,32 @@ public static class StudioCommands
     private static IEnumerable<Prompt> Explode(CommandContext c)
     {
         foreach (var p in RequireSelection(c)) yield return p;
-        var polys = c.SelectedEntities.Where(e => e.Geometry is PolylineEntity).ToList();
-        if (polys.Count == 0) { c.Print("  Nothing to explode."); yield break; }
+        var targets = c.SelectedEntities.Where(e => e.Geometry is PolylineEntity or BlockRefEntity or HatchEntity or DimensionEntity).ToList();
+        if (targets.Count == 0) { c.Print("  Nothing to explode."); yield break; }
         c.Doc.Edit("Explode", d =>
         {
-            foreach (var e in polys)
+            foreach (var e in targets)
             {
-                d.Entities.Remove(e);
-                var pts = ((PolylineEntity)e.Geometry).Tessellate();
-                for (int i = 0; i + 1 < pts.Count; i++) d.Entities.Add(StudioEntity.Create(e.Layer, new LineEntity(pts[i], pts[i + 1]), e.Color));
+                int at = d.Entities.FindIndex(x => x.Id == e.Id);
+                if (at < 0) continue;
+                d.Entities.RemoveAt(at);
+                IEnumerable<StudioEntity> parts = e.Geometry switch
+                {
+                    PolylineEntity pl => Pairs(pl.Tessellate()).Select(s => StudioEntity.Create(e.Layer, new LineEntity(s.A, s.B), e.Color)),
+                    // a block explodes one level: its objects come back with their own layers and colours
+                    BlockRefEntity br => br.Children().Select(ch => StudioEntity.Create(ch.Layer == "0" ? e.Layer : ch.Layer, ch.Geometry, ch.Color ?? e.Color)),
+                    _ => Geometry2D.Primitives(e.Geometry).Select(pr => StudioEntity.Create(pr.Layer ?? e.Layer, pr.Geometry, pr.Color ?? e.Color))
+                };
+                foreach (var part in parts) { d.EnsureLayer(part.Layer); d.Entities.Insert(at++, part); }
             }
         });
         c.Engine.Selection.Clear();
-        c.Print($"  {polys.Count} polyline(s) exploded.");
+        c.Print($"  {targets.Count} object(s) exploded.");
+    }
+
+    private static IEnumerable<(Vec2 A, Vec2 B)> Pairs(IReadOnlyList<Vec2> pts)
+    {
+        for (int i = 0; i + 1 < pts.Count; i++) yield return (pts[i], pts[i + 1]);
     }
 
     // ===================================================================== solids

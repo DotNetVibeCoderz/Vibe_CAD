@@ -53,7 +53,8 @@ public sealed record StudioSolid(Guid Id, string Name, string Layer, Mesh Mesh, 
 }
 
 /// <summary>Immutable snapshot used by undo/redo (lists are copied, objects are shared).</summary>
-public sealed record DocState(IReadOnlyList<Layer> Layers, string CurrentLayer, IReadOnlyList<StudioEntity> Entities, IReadOnlyList<StudioSolid> Solids);
+public sealed record DocState(IReadOnlyList<Layer> Layers, string CurrentLayer, IReadOnlyList<StudioEntity> Entities, IReadOnlyList<StudioSolid> Solids,
+    IReadOnlyDictionary<string, BlockDefinition> Blocks);
 
 /// <summary>
 /// A Gravicode CAD Studio drawing: layers, 2D entities (model space) and 3D solids, with undo/redo.
@@ -70,6 +71,8 @@ public sealed class StudioDocument
     public List<StudioEntity> Entities { get; private set; } = [];
     public List<StudioSolid> Solids { get; private set; } = [];
     public Dictionary<string, string> Properties { get; } = [];
+    /// <summary>Block definitions by name (case-insensitive). Definitions are immutable; redefining replaces them.</summary>
+    public Dictionary<string, BlockDefinition> Blocks { get; private set; } = new(StringComparer.OrdinalIgnoreCase);
 
     private readonly Stack<(string Label, DocState State)> _undo = new();
     private readonly Stack<(string Label, DocState State)> _redo = new();
@@ -83,11 +86,12 @@ public sealed class StudioDocument
     public bool CanRedo => _redo.Count > 0;
     public string? UndoLabel => _undo.Count > 0 ? _undo.Peek().Label : null;
 
-    public DocState Snapshot() => new([.. Layers], CurrentLayer, [.. Entities], [.. Solids]);
+    public DocState Snapshot() => new([.. Layers], CurrentLayer, [.. Entities], [.. Solids], new Dictionary<string, BlockDefinition>(Blocks, StringComparer.OrdinalIgnoreCase));
 
     private void Restore(DocState s)
     {
         Layers = [.. s.Layers]; CurrentLayer = s.CurrentLayer; Entities = [.. s.Entities]; Solids = [.. s.Solids];
+        Blocks = new Dictionary<string, BlockDefinition>(s.Blocks, StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>Applies an undoable edit.</summary>
@@ -176,12 +180,14 @@ public sealed class StudioDocument
         foreach (var s in VisibleSolids) m.Bodies.Add(s.ToBody());
         if (includeDrawing)
             foreach (var e in VisibleEntities)
-            {
-                var g = e.Geometry.Transformed(p => p);
-                g.Layer = e.Layer;
-                g.Color = CadColor.FromHex(e.Color ?? LayerOf(e.Layer).Color);
-                m.Drawing.Add(g);
-            }
+                foreach (var (prim, layer, color) in Geometry2D.Primitives(e.Geometry))
+                {
+                    // studio-only objects (dimensions, hatches, blocks) are exploded so every exporter understands them
+                    var g = prim.Transformed(p => p);
+                    g.Layer = layer ?? e.Layer;
+                    g.Color = CadColor.FromHex(color ?? e.Color ?? LayerOf(g.Layer).Color);
+                    m.Drawing.Add(g);
+                }
         if (Description != null) m.Metadata["description"] = Description;
         return m;
     }

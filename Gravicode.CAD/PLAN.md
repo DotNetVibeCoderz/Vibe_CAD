@@ -19,9 +19,10 @@ Status of each item is tracked in [Progress.md](Progress.md).
 - Gravicode CAD Studio (web + desktop CAD designer) with installers on GitHub releases
 
 ### Studio next
-- Grips (drag vertices), TRIM/EXTEND/FILLET/CHAMFER, hatch, blocks, paper-space layouts and plotting
-- Picking and gizmos in the 3D pane; sketch-on-face; parametric history for solids
-- Signed/notarised installers; auto-update
+- [x] Grips, TRIM/EXTEND/FILLET/CHAMFER, hatch, blocks, PLOT (scaled PDF/SVG with title block)
+- [ ] Paper-space layouts with multiple viewports; polyline arc segments (bulges) instead of tessellated arcs
+- [ ] Picking and gizmos in the 3D pane; sketch-on-face; parametric history for solids
+- [ ] Signed/notarised installers; auto-update
 
 ## v1.1 — Exact solids
 

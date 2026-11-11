@@ -16,7 +16,10 @@ public static class StudioRibbon
                          B("Rectangle", "RECTANG", "rect", "Rectangle (REC)"), B("Polygon", "POLYGON", "polygon", "Polygon (POL)"), B("Spline", "SPLINE", "spline", "Spline (SPL)"), B("Point", "POINT", "point", "Point (PO)")]),
             new("Modify", [B("Move", "MOVE", "move", "Move (M)"), B("Copy", "COPY", "copy", "Copy (CO)"), B("Rotate", "ROTATE", "rotate", "Rotate (RO)"), B("Scale", "SCALE", "scale", "Scale (SC)"),
                            B("Mirror", "MIRROR", "mirror", "Mirror (MI)"), B("Offset", "OFFSET", "offset", "Offset (O)"), B("Array", "ARRAY", "array", "Array (AR)"), B("Explode", "EXPLODE", "explode", "Explode (X)"), B("Erase", "ERASE", "erase", "Erase (E)")]),
-            new("Annotate", [B("Text", "TEXT", "text", "Text (T)"), B("Dimension", "DIMLINEAR", "dim", "Aligned dimension (DLI)")]),
+            new("Edit", [B("Trim", "TRIM", "trim", "Trim to crossing objects (TR)"), B("Extend", "EXTEND", "extend", "Extend to the next object (EX)"),
+                         B("Fillet", "FILLET", "fillet", "Round a corner (F)"), B("Chamfer", "CHAMFER", "chamfer", "Bevel a corner (CHA)")]),
+            new("Annotate", [B("Text", "TEXT", "text", "Text (T)"), B("Dimension", "DIMLINEAR", "dim", "Aligned dimension (DLI)"), B("Hatch", "HATCH", "hatch", "Hatch or fill an area (H)")]),
+            new("Blocks", [B("Block", "BLOCK", "block", "Make a block from objects (B)"), B("Insert", "INSERT", "insert", "Insert a block (I)")]),
             new("Layers", [B("Layers", "LAYER", "layers", "Layer manager (LA)", true), B("Colour", "COLOR", "color", "Current colour (COL)")]),
         ]),
         new("Solid", "Solid",
@@ -42,6 +45,7 @@ public static class StudioRibbon
         new("Output", "Keluaran",
         [
             new("File", [B("New", "app:new", "new", "Start screen", true), B("Open", "app:open", "open", "Open .gcproj or any CAD file", true), B("Save", "app:save", "save", "Save project (.gcproj)", true)]),
+            new("Plot", [B("Plot", "PLOT", "plot", "Plot to a PDF/SVG sheet with scale and title block (PLOT)", true)]),
             new("Export", [B("STEP", "app:export:step", "export", "STEP AP214"), B("STL", "app:export:stl", "export", "Binary STL"), B("glTF", "app:export:glb", "export", "glTF binary"), B("3MF", "app:export:3mf", "export", "3MF"),
                            B("DXF", "app:export:dxf", "export", "AutoCAD DXF"), B("PDF", "app:export:pdf", "export", "PDF drawing"), B("SVG", "app:export:svg", "export", "SVG"), B("PNG", "app:export:png", "export", "Rendered image")]),
         ]),
@@ -104,5 +108,13 @@ public static class StudioRibbon
         ["open"] = "M3 7 H9 L11 9 H21 V19 H3 Z M3 11 H21",
         ["save"] = "M5 3 H17 L21 7 V21 H3 V5 Z M7 3 V9 H16 V3 M7 21 V14 H17 V21",
         ["export"] = "M12 3 V15 M7 8 L12 3 L17 8 M5 13 V21 H19 V13",
+        ["trim"] = "M3 12 H9 M15 12 H21 M12 3 V21 M9 9 L15 15 M15 9 L9 15",
+        ["extend"] = "M20 3 V21 M3 12 H12 M12 12 H17 M14 9 L17 12 L14 15",
+        ["fillet"] = "M4 20 V12 A8 8 0 0 1 12 4 H20",
+        ["chamfer"] = "M4 20 V11 L11 4 H20",
+        ["hatch"] = "M4 4 H20 V20 H4 Z M4 10 L10 4 M4 16 L16 4 M8 20 L20 8 M14 20 L20 14",
+        ["block"] = "M4 4 H11 V11 H4 Z M13 4 H20 V11 H13 Z M4 13 H11 V20 H4 Z M13 13 H20 V20 H13 Z",
+        ["insert"] = "M12 3 V14 M8 10 L12 14 L16 10 M5 15 H19 V21 H5 Z",
+        ["plot"] = "M6 9 V3 H18 V9 M6 17 H4 V9 H20 V17 H18 M6 14 H18 V21 H6 Z",
     };
 }

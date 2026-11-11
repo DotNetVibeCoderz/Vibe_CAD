@@ -15,6 +15,9 @@ public sealed record Prompt(PromptKind Kind, string Message)
     public double? Default { get; init; }
     /// <summary>Selection prompts: one pick completes the prompt.</summary>
     public bool Single { get; init; }
+    /// <summary>Point prompts that pick a spot on an object (TRIM, FILLET…): object and grid snap are off so the
+    /// pick stays where the user clicked.</summary>
+    public bool NoSnap { get; init; }
 
     public string Display
     {
@@ -31,6 +34,9 @@ public sealed record Prompt(PromptKind Kind, string Message)
         new(PromptKind.Point, msg) { Base = from, Preview = preview, AllowEnd = allowEnd, Keywords = keywords };
     public static Prompt Distance(string msg, Vec2? from = null, double? def = null, Func<Vec2, IEnumerable<DrawingEntity>>? preview = null) =>
         new(PromptKind.Distance, msg) { Base = from, Default = def, Preview = preview };
+    /// <summary>Pick a spot on an object (no snapping); Enter finishes.</summary>
+    public static Prompt Pick(string msg, Func<Vec2, IEnumerable<DrawingEntity>>? preview = null, params string[] keywords) =>
+        new(PromptKind.Point, msg) { NoSnap = true, AllowEnd = true, Keywords = keywords, Preview = preview };
     public static Prompt Integer(string msg, int def) => new(PromptKind.Integer, msg) { Default = def };
     public static Prompt Text(string msg) => new(PromptKind.Text, msg);
     public static Prompt Select(string msg = "Select objects") => new(PromptKind.Select, msg) { AllowEnd = true };
