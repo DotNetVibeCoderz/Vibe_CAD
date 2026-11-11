@@ -8,8 +8,8 @@
   <ItemGroup>
     <PackageReference Include="Avalonia.Desktop" Version="12.1.2" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
-    <PackageReference Include="ThreeNet.Avalonia" Version="0.12.0" />
-    <PackageReference Include="Gravicode.CAD.ThreeNet" Version="1.0.0" />
-    <PackageReference Include="Gravicode.CAD.Parametric" Version="1.0.0" />
+    <PackageReference Include="ThreeNet.Avalonia" Version="0.12.1" />
+    <PackageReference Include="Gravicode.CAD.ThreeNet" Version="1.0.1" />
+    <PackageReference Include="Gravicode.CAD.Parametric" Version="1.0.1" />
   </ItemGroup>
 </Project>

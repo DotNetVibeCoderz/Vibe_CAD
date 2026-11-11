@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Gravicode.CAD.AI" Version="1.0.0" />
-    <PackageReference Include="Gravicode.CAD.Rendering" Version="1.0.0" />
+    <PackageReference Include="Gravicode.CAD.AI" Version="1.0.1" />
+    <PackageReference Include="Gravicode.CAD.Rendering" Version="1.0.1" />
   </ItemGroup>
 </Project>

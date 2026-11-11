@@ -4,7 +4,7 @@ Kept in the repo so templates can be regenerated consistently: python gen_templa
 import json
 import os
 
-V = "1.0.0"
+V = "1.0.1"
 CREDIT = "// Made with Gravicode.CAD — Dibuat oleh Gravicode Studios dipimpin oleh Kang Fadhil\n"
 
 
@@ -301,7 +301,7 @@ b = "content/cad-avalonia/"
 w(b + ".template.config/template.json", tj("cad-avalonia", "Gravicode.CAD Avalonia App",
   "Cross-platform desktop app (Avalonia 12) rendering CAD models through ThreeNet (DirectX 12 / Metal / Vulkan).", ["Desktop", "Avalonia"]))
 w(b + "CadApp.csproj", proj("Microsoft.NET.Sdk", "net10.0", "WinExe", [
-    ("Avalonia.Desktop", "12.1.2"), ("Avalonia.Themes.Fluent", "12.1.2"), ("ThreeNet.Avalonia", "0.12.0"),
+    ("Avalonia.Desktop", "12.1.2"), ("Avalonia.Themes.Fluent", "12.1.2"), ("ThreeNet.Avalonia", "0.12.1"),
     ("Gravicode.CAD.ThreeNet", V), ("Gravicode.CAD.Parametric", V)]))
 w(b + "Program.cs", CREDIT + """using Avalonia;
 using Avalonia.Controls;

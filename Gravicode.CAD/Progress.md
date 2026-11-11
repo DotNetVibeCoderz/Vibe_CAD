@@ -16,7 +16,7 @@ Legend: ✅ done · 🚧 in progress · ⏳ planned (see [PLAN.md](PLAN.md))
 | Gravicode.CAD.Native + Rust engine | ✅ | mass properties (multi-threaded), normals, weld, Z-slice; parity tests; CI builds win-x64, linux-x64, osx-arm64 |
 | Gravicode.CAD.Rendering | ✅ | Software renderer → PNG, OrbitCamera, InteractiveView |
 | Gravicode.CAD.ThreeJs | ✅ | Blazor `<CadViewer>` (three.js 0.170, studio environment, toolbar, snapshots) |
-| Gravicode.CAD.ThreeNet | ✅ | `CadScene` for ThreeNet 0.12 (light/dark, edges, grid) |
+| Gravicode.CAD.ThreeNet | ✅ | `CadScene` for ThreeNet 0.12.1 (light/dark, edges, grid, clip planes fitted to the model) |
 | Gravicode.CAD.Viewer.Wpf / WinForms | ✅ | `CadViewport` controls |
 | Gravicode.CAD.FEM | ✅ | Truss 2D/3D, plane-stress CST + von Mises, heat conduction, Delaunay mesher, CSR + PCG |
 | Gravicode.CAD.CAM | ✅ | Contour, pocket with islands, peck drill, FDM slicer, G-code (GRBL/Marlin/LinuxCNC) |
@@ -26,12 +26,12 @@ Legend: ✅ done · 🚧 in progress · ⏳ planned (see [PLAN.md](PLAN.md))
 ## Apps, packaging, docs
 | Item | Status |
 |---|---|
-| Tests | ✅ 75 passing + 1 opt-in live LLM test |
+| Tests | ✅ 85 passing (75 library + 10 studio) + 1 opt-in live LLM test |
 | Console sample, DocGen tool | ✅ |
 | Templates (console, webapi, blazor, wpf, winforms, avalonia, maui) | ✅ |
 | Gallery — Blazor (18 samples, three.js) | ✅ |
 | Gallery — Avalonia (ThreeNet GPU, software fallback) | ✅ |
-| Docs EN/ID (9 topics), README EN/ID, screenshots, NuGet icon | ✅ |
+| Docs EN/ID (10 topics), README EN/ID, screenshots, NuGet icon | ✅ |
 | CI (GitHub Actions): native matrix → build/test → pack → NuGet on tag | ✅ |
 | **Gravicode CAD Studio** — Studio.Core (document + undo, command engine, ~50 commands, `.gcproj`, catalog) | ✅ 10 tests |
 | Studio Web (Blazor Server, blueprint canvas, three.js 3D) | ✅ |
@@ -40,5 +40,6 @@ Legend: ✅ done · 🚧 in progress · ⏳ planned (see [PLAN.md](PLAN.md))
 | Studio release workflow: Windows setup + zip, Linux .deb + tar.gz, macOS .dmg + .app.zip, web zips | ✅ |
 
 ## Log
+- 2026-11-11 — **1.0.1**: NuGet packages and `dotnet new` templates move to ThreeNet 0.12.1 and ship the `CadScene` clip-plane/background fixes and the software renderer's edge depth-bias fix. Studio 1.0.0 released with installers for Windows, Linux and macOS.
 - 2026-11-11 — Gravicode CAD Studio (web + desktop) added with docs, screenshots and the `gravicode-cad-studio-v*` release workflow. Fixed in ThreeNet 0.12.1 while embedding it: stale GPU buffers on recycled ids, FXC → DXC on Windows (first frame 16.6 s → 1 s), UI-friendly render loop. `CadScene` now fits near/far planes to the model and uses linear background colours.
 - 2026-11-11 — All modules implemented; Rust engine wired; live Claude text-to-CAD verified; galleries screenshotted; moved into the Vibe_CAD monorepo with CI.

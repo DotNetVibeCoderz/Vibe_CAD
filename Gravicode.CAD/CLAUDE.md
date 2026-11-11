@@ -8,7 +8,7 @@ Gravicode.CAD lives in the `Gravicode.CAD/` folder of the Vibe_CAD monorepo. All
 
 ```bash
 dotnet build Gravicode.CAD.slnx                       # everything (Windows needed for Viewer.Wpf/WinForms + gallery desktop)
-dotnet test tests/Gravicode.CAD.Tests                  # ~75 tests
+dotnet test tests/Gravicode.CAD.Tests                  # 75 tests
 dotnet test tests/Gravicode.CAD.Tests --filter "FullyQualifiedName~IoTests.Step_reads_advanced_brep_with_cylinder"
 ./build-native.ps1                                     # cargo build + copy into src/Gravicode.CAD.Native/runtimes/<rid>/native
 cd native/gravicode-cad-engine && cargo test --release
